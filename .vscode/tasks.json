@@ -1,0 +1,14 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "npm",
+			"script": "test",
+			"path": "tests",
+			"group": "test",
+			"problemMatcher": [],
+			"label": "npm: test - tests",
+			"detail": "jest"
+		}
+	]
+}

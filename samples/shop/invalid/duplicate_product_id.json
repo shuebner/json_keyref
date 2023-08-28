@@ -1,0 +1,28 @@
+{
+  "sample": {
+    "products": [
+      {
+        "id": "ABC_1"
+      },
+      {
+        "id": "ABC_1"
+      }
+    ],
+    "customers": [],
+    "orders": []
+  },
+  "expectedErrors": [
+    {
+      "instancePath": "/products",
+      "keyword": "key",
+      "message": "property 'id' must be unique",
+      "params": {
+        "keyId": "productIdKey",
+        "duplicates": [
+          "/products/0",
+          "/products/1"
+        ]
+      }
+    }
+  ]
+}

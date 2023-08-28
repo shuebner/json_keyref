@@ -1,0 +1,24 @@
+{
+  "id": "urn:myrels",
+  "relations": {
+    "customerIdKey": {
+      "key": {
+        "selector": "$.customers[:]",
+        "field": "$.id"
+      }
+    },
+    "productIdKey": {
+      "key": {
+        "selector": "$.products[:]",
+        "field": "$.id"
+      }
+    },
+    "orderToCustomerId": {
+      "keyRef": {
+        "refer": "customerIdKey",
+        "selector": "$.orders[:]",
+        "field": "$.customer"
+      }
+    }
+  }
+}

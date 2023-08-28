@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema#",
+  "$id": "urn:shop.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "products",
+    "customers",
+    "orders"
+  ],
+  "properties": {
+    "products": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "friendly_name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "id"
+        ]
+      }
+    },
+    "customers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "friendly_name": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "id"
+        ]
+      }
+    },
+    "orders": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "customer": {
+            "type": "string"
+          },
+          "product": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "customer",
+          "product"
+        ]
+      }
+    }
+  }
+}

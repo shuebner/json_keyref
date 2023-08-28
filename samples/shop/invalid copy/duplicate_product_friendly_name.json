@@ -1,0 +1,29 @@
+{
+  "sample": {
+    "products": [
+      {
+        "id": "ABC_1",
+        "friendly_name": "some product 1"
+      },
+      {
+        "id": "ABC_3",
+        "friendly_name": "some product 1"
+      }
+    ],
+    "customers": [],
+    "orders": []
+  },
+  "expectedErrors": [
+    {
+      "instancePath": "/products",
+      "keyword": "unique",
+      "message": "property 'friendly_name' must be unique",
+      "params": {
+        "duplicates": [
+          "products/0",
+          "products/1"
+        ]
+      }
+    }
+  ]
+}

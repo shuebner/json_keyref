@@ -1,0 +1,49 @@
+{
+  "products": [
+    {
+      "id": "ABC_1",
+      "friendly_name": "some product 1",
+      "description": "some product 1 that will change your life"
+    },
+    {
+      "id": "ABC_2",
+      "description": "some product 2 that will change your life"
+    },
+    {
+      "id": "ABC_3",
+      "friendly_name": "some product 3",
+      "description": "some product 3 that will change your life"
+    }
+  ],
+  "customers": [
+    {
+      "id": "C1",
+      "name": "John Doe",
+      "friendly_name": "john_doe"
+    },
+    {
+      "id": "C2",
+      "name": "Jim Bob",
+      "friendly_name": "jim_bob"
+    },
+    {
+      "id": "C3",
+      "name": "John Doe",
+      "friendly_name": "john_doe_2"
+    }
+  ],
+  "orders": [
+    {
+      "customer": "C1",
+      "product": "ABC_1"
+    },
+    {
+      "customer": "C1",
+      "product": "ABC_2"
+    },
+    {
+      "customer": "C2",
+      "product": "ABC_3"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "name": "validate_rels",
+  "type": "module",
+  "version": "1.0.0",
+  "description": "Validates relations in JSON documents",
+  "main": "validate_rels.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "jsonpath": "^1.1.1"
+  }
+}

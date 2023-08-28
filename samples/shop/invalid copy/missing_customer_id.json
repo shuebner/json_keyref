@@ -1,0 +1,28 @@
+{
+  "sample": {
+    "products": [],
+    "customers": [
+      {
+        "friendly_name": "john_doe"
+      }
+    ],
+    "orders": []
+  },
+  "expectedErrors": [
+    {
+      "instancePath": "/customers/0",
+      "keyword": "required",
+      "params": {
+        "missingProperty": "id"
+      }
+    },
+    {
+      "instancePath": "/customers/0",
+      "keyword": "key",
+      "message": "property 'id' is required",
+      "params": {
+        "missingProperty": "id"
+      }
+    }
+  ]
+}

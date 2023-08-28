@@ -1,0 +1,10 @@
+{
+  "json.schemas": [
+    {
+      "fileMatch": [
+        "/samples/shop/valid/**/*.json"
+      ],
+      "url": "/schemas/shop.schema.json"
+    }
+  ]
+}
