@@ -6,15 +6,14 @@ function validateRels(objToValidate, relationsSpec) {
   const keyIds = relationIds.filter(id => relations[id].key)
   const uniqueIds = relationIds.filter(id => relations[id].unique)
 
-  const keyDiagnostics = keyIds.flatMap(id => validateKey(id, objToValidate, relations))
-  const uniqueDiagnostics = uniqueIds.flatMap(id => validateUnique(id, objToValidate, relations))
+  const keyDiagnostics = keyIds.flatMap(id => validateKey(id, objToValidate, relations[id].key))
+  const uniqueDiagnostics = uniqueIds.flatMap(id => validateUnique(id, objToValidate, relations[id].unique))
 
   return keyDiagnostics.concat(uniqueDiagnostics)
 }
 
-function validateUnique(id, objToValidate, relations) {
-  const definition = relations[id].unique
-  const { selector, field } = definition
+function validateUnique(id, objToValidate, relation, keyword) {
+  const { selector, field } = relation
   const selectedNodes = jp.nodes(objToValidate, selector);
   const nodesWithFields = selectedNodes.map(node => {
     return {
@@ -30,7 +29,7 @@ function validateUnique(id, objToValidate, relations) {
 
   const duplicateDiagnostics = duplicateGroups.map(([key, node]) => {return {
     instancePath: formatSelector(selector),
-    keyword: "unique",
+    keyword: keyword ?? "unique",
     message: `property '${node[0].fieldNodes[0].path.slice(1)}' must be unique`,
     params: {
       keyId: id,
@@ -41,9 +40,8 @@ function validateUnique(id, objToValidate, relations) {
   return duplicateDiagnostics
 }
 
-function validateKey(id, objToValidate, relations) {
-  const keyDefinition = relations[id].key
-  const { selector, field } = keyDefinition
+function validateKey(id, objToValidate, relation) {
+  const { selector, field } = relation
   const selectedNodes = jp.nodes(objToValidate, selector);
   const selectedFields = selectedNodes.map(node => {
     return {
@@ -53,7 +51,7 @@ function validateKey(id, objToValidate, relations) {
   })
 
   const fieldsWithoutKey = selectedFields.filter(f => f.fieldNodes.length == 0)
-  const fieldWithoutKeyDiagnostics = fieldsWithoutKey.map(node => {
+  const missingKeyDiagnostics = fieldsWithoutKey.map(node => {
     const missingFieldName = formatField(field)
 
     return {
@@ -66,23 +64,10 @@ function validateKey(id, objToValidate, relations) {
       }
     }
   })
-  
-  const fieldsWithKey = selectedFields.filter(f => !fieldsWithoutKey.includes(f))
-  const groups = groupBy(fieldsWithKey, f => f.fieldNodes[0].value)
 
-  const duplicateGroups = Object.entries(groups).filter(([, value]) => value.length > 1)
+  const duplicateKeyDiagnostics = validateUnique(id, objToValidate, relation, "key")
 
-  const duplicateKeyDiagnostics = duplicateGroups.map(([key, node]) => {return {
-    instancePath: formatSelector(selector),
-    keyword: "key",
-    message: `property '${node[0].fieldNodes[0].path.slice(1)}' must be unique`,
-    params: {
-      keyId: id,
-      duplicates: node.map(formatPathToNode)
-    }
-  }})
-
-  return fieldWithoutKeyDiagnostics.concat(duplicateKeyDiagnostics)
+  return missingKeyDiagnostics.concat(duplicateKeyDiagnostics)
 }
 
 function formatPathToNode(node) {
