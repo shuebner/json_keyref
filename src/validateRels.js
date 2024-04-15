@@ -4,11 +4,41 @@ function validateRels(objToValidate, relationsSpec) {
   const { relations } = relationsSpec
   const relationIds = Object.keys(relations)
   const keyIds = relationIds.filter(id => relations[id].key)
-  const keyRefIds = relationIds.filter(id => relations[id].keyRef)
+  const uniqueIds = relationIds.filter(id => relations[id].unique)
 
   const keyDiagnostics = keyIds.flatMap(id => validateKey(id, objToValidate, relations))
+  const uniqueDiagnostics = uniqueIds.flatMap(id => validateUnique(id, objToValidate, relations))
 
-  return keyDiagnostics
+  return keyDiagnostics.concat(uniqueDiagnostics)
+}
+
+function validateUnique(id, objToValidate, relations) {
+  const definition = relations[id].unique
+  const { selector, field } = definition
+  const selectedNodes = jp.nodes(objToValidate, selector);
+  const nodesWithFields = selectedNodes.map(node => {
+    return {
+      ...node,
+      fieldNodes: jp.nodes(node.value, field)
+    }
+  })
+  
+  const nodesWithUniqueField = nodesWithFields.filter(f => f.fieldNodes.length > 0)
+  const groups = groupBy(nodesWithUniqueField, f => f.fieldNodes[0].value)
+
+  const duplicateGroups = Object.entries(groups).filter(([, value]) => value.length > 1)
+
+  const duplicateDiagnostics = duplicateGroups.map(([key, node]) => {return {
+    instancePath: formatSelector(selector),
+    keyword: "unique",
+    message: `property '${node[0].fieldNodes[0].path.slice(1)}' must be unique`,
+    params: {
+      keyId: id,
+      duplicates: node.map(formatPathToNode)
+    }
+  }})
+
+  return duplicateDiagnostics
 }
 
 function validateKey(id, objToValidate, relations) {

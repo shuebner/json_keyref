@@ -7,6 +7,12 @@
         "field": "$.id"
       }
     },
+    "uniqueCustomerFriendlyName": {
+      "unique": {
+        "selector": "$.customers[:]",
+        "field": "$.friendly_name"
+      }
+    },
     "productIdKey": {
       "key": {
         "selector": "$.products[:]",
