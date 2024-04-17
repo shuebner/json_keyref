@@ -21,21 +21,24 @@ function validateUnique(id, objToValidate, relation, keyword) {
       fieldNodes: jp.nodes(node.value, field)
     }
   })
-  
+
   const nodesWithUniqueField = nodesWithFields.filter(f => f.fieldNodes.length > 0)
   const groups = groupBy(nodesWithUniqueField, f => f.fieldNodes[0].value)
 
   const duplicateGroups = Object.entries(groups).filter(([, value]) => value.length > 1)
 
-  const duplicateDiagnostics = duplicateGroups.map(([key, node]) => {return {
-    instancePath: formatSelector(selector),
-    keyword: keyword ?? "unique",
-    message: `property '${node[0].fieldNodes[0].path.slice(1)}' must be unique`,
-    params: {
-      keyId: id,
-      duplicates: node.map(formatPathToNode)
+  const duplicateDiagnostics = duplicateGroups.map(([key, nodes]) => {
+    return {
+      instancePath: formatSelector(selector),
+      keyword: keyword ?? "unique",
+      message: `duplicate ${nodes[0].fieldNodes[0].path.slice(1)} '${key}', property '${nodes[0].fieldNodes[0].path.slice(1)}' must be unique`,
+      params: {
+        relationId: id,
+        duplicateValue: key,
+        duplicates: nodes.map(formatPathToNode)
+      }
     }
-  }})
+  })
 
   return duplicateDiagnostics
 }
@@ -59,7 +62,7 @@ function validateKey(id, objToValidate, relation) {
       keyword: "key",
       message: `property '${missingFieldName}' is required`,
       params: {
-        keyId: id,
+        relationId: id,
         missingProperty: missingFieldName
       }
     }
@@ -94,14 +97,14 @@ function formatField(field) {
 }
 
 function groupBy(xs, getKey) {
-  return xs.reduce(function(rv, x) {
+  return xs.reduce(function (rv, x) {
     (rv[getKey(x)] = rv[getKey(x)] || []).push(x);
     return rv;
   }, {});
 };
 
 function groupByArray(xs, getKey) {
-  return xs.reduce(function(rv, x) {
+  return xs.reduce(function (rv, x) {
     (rv[getKey(x)] = rv[getKey(x)] || []).push(x);
     return rv;
   }, {});

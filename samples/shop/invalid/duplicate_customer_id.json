@@ -10,6 +10,12 @@
       },
       {
         "id": "C1"
+      },
+      {
+        "id": "C3"
+      },
+      {
+        "id": "C2"
       }
     ],
     "orders": []    
@@ -18,12 +24,26 @@
     {
       "instancePath": "/customers",
       "keyword": "key",
-      "message": "property 'id' must be unique",
+      "message": "duplicate id 'C1', property 'id' must be unique",
       "params": {
-        "keyId": "customerIdKey",
+        "relationId": "customerIdKey",
+        "duplicateValue": "C1",
         "duplicates": [
           "/customers/0",
           "/customers/2"
+        ]
+      }
+    },    
+    {
+      "instancePath": "/customers",
+      "keyword": "key",
+      "message": "duplicate id 'C2', property 'id' must be unique",
+      "params": {
+        "relationId": "customerIdKey",
+        "duplicateValue": "C2",
+        "duplicates": [
+          "/customers/1",
+          "/customers/4"
         ]
       }
     }

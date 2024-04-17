@@ -21,7 +21,7 @@
       "keyword": "key",
       "message": "property 'id' is required",
       "params": {
-        "keyId": "customerIdKey",
+        "relationId": "customerIdKey",
         "missingProperty": "id"
       }
     }
