@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema#",
+  "$id": "urn:svsoft.relations",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "relations": {
+      "type": "object",
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "$ref": "#/definitions/unique"
+          },
+          {
+            "$ref": "#/definitions/key"
+          },
+          {
+            "$ref": "#/definitions/keyRef"
+          }
+        ]
+      }
+    }
+  },
+  "required": [
+    "id",
+    "relations"
+  ],
+  "definitions": {
+    "key": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "object",
+          "properties": {
+            "selector": {
+              "type": "string"
+            },
+            "field": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "selector",
+            "field"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "key"
+      ],
+      "additionalProperties": false
+    },
+    "unique": {
+      "type": "object",
+      "properties": {
+        "unique": {
+          "type": "object",
+          "properties": {
+            "selector": {
+              "type": "string"
+            },
+            "field": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "selector",
+            "field"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "unique"
+      ],
+      "additionalProperties": false
+    },
+    "keyRef": {
+      "type": "object",
+      "properties": {
+        "keyRef": {
+          "type": "object",
+          "properties": {
+            "refer": {
+              "type": "string"
+            },
+            "selector": {
+              "type": "string"
+            },
+            "field": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "refer",
+            "selector",
+            "field"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "keyRef"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

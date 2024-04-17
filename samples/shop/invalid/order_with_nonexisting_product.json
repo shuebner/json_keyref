@@ -1,0 +1,31 @@
+{
+  "sample": {
+    "products": [
+      {
+        "id": "ABC_1"
+      }
+    ],
+    "customers": [
+      {
+        "id": "C1"
+      }
+    ],
+    "orders": [
+      {
+        "customer": "C1",
+        "product": "ABC_2"
+      }
+    ]
+  },
+  "expectedErrors": [
+    {
+      "instancePath": "/orders/0",
+      "keyword": "keyRef",
+      "message": "invalid keyRef 'ABC_2'",
+      "params": {
+        "relationId": "orderToProductId",
+        "invalidRef": "ABC_2"
+      }
+    }
+  ]
+}

@@ -5,6 +5,12 @@
         "/samples/shop/valid/**/*.json"
       ],
       "url": "/schemas/shop.schema.json"
+    },
+    {
+      "fileMatch": [
+        "/schemas/*.relations.json"
+      ],
+      "url": "/schemas/relations.schema.json"
     }
   ]
 }

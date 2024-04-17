@@ -25,6 +25,13 @@
         "selector": "$.orders[:]",
         "field": "$.customer"
       }
+    },
+    "orderToProductId": {
+      "keyRef": {
+        "refer": "productIdKey",
+        "selector": "$.orders[:]",
+        "field": "$.product"
+      }
     }
   }
 }
