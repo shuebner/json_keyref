@@ -1,0 +1,12 @@
+{
+  "id": "urn:machines",
+  "relations": {
+    "varDefinitionKey": {
+      "key": {
+        "scope": "$.*",
+        "selector": "$.plc_configuration.blockSequence.*.varDefinitions.*",
+        "field": "$.~"
+      }
+    }
+  }
+}

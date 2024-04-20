@@ -1,0 +1,75 @@
+{
+  "sample": [
+    {
+      "equipment_number": "ma_5001",
+      "created_at": "2022-05-31T06:22:41.453153+00:00",
+      "changed_at": "2022-05-31T06:22:41.453155+00:00",
+      "location_information": {
+        "region": "eu",
+        "country": "de",
+        "plantId": "er",
+        "siteId": "dev",
+        "hallId": "dev",
+        "productionLine": "pl_50"
+      },
+      "plc_configuration": {
+        "ipAddress": "$(Plcs:Plc5001:IpAddress)",
+        "portNumber": "$(Plcs:Plc5001:Port)",
+        "plcType": "S7300",
+        "rackNumber": 0,
+        "slotNumber": 2,
+        "blockSequence": [
+          {
+            "accessType": "Read",
+            "blockType": "DB",
+            "dbNumber": 512,
+            "offset": 60,
+            "itemType": "Byte",
+            "itemAmount": 10,
+            "waitTimeMs": 0,
+            "varDefinitions": {
+              "s000_all-key-switches-in-setup": {
+                "byteOffset": 0,
+                "bitOffset": 0,
+                "amount": 1,
+                "varType": "Boolean"
+              }
+            }
+          },
+          {
+            "accessType": "Read",
+            "blockType": "DB",
+            "dbNumber": 8,
+            "offset": 562,
+            "itemType": "Byte",
+            "itemAmount": 160,
+            "waitTimeMs": 10,
+            "varDefinitions": {
+              "s000_all-key-switches-in-setup": {
+                "byteOffset": 0,
+                "bitOffset": 0,
+                "amount": 1,
+                "varType": "Short"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "expectedErrors": [
+    {
+      "instancePath": "/0",
+      "keyword": "key",
+      "message": "duplicate varDefinitions property 's000_all-key-switches-in-setup', property names in varDefinitions must be unique",
+      "params": {
+        "relationId": "varDefinitionKey",
+        "duplicateValue": "s000_all-key-switches-in-setup",
+        "duplicates": [
+          "/0/plc_configuration/blockSequence/0/varDefinitions/s000_all-key-switches-in-setup",
+          "/0/plc_configuration/blockSequence/1/varDefinitions/s000_all-key-switches-in-setup"
+        ]
+      }
+    }
+  ]
+}

@@ -51,9 +51,19 @@ function validateKeyRef(id, objToValidate, refRelation, keyRelation) {
   })
 }
 
-function validateUnique(id, objToValidate, relation, keyword) {
+function validateUnique(id, objToValidate, relation) {
+  const scope = relation.scope ?? "$."
+
+  const scopes = JSONPath({path: scope, resultType: 'all', json: objToValidate})
+
+  const diagnostics = scopes.flatMap(scope => validateUniqueScope(id, scope, relation))
+  
+  return diagnostics
+}
+
+function validateUniqueScope(id, scope, relation, keyword) {
   const { selector, field } = relation
-  const selectedNodes = JSONPath({path: selector, resultType: 'all', json: objToValidate })
+  const selectedNodes = JSONPath({path: selector, resultType: 'all', json: scope.value })
   const nodesWithFields = selectedNodes.map(node => {
     return {
       ...node,
@@ -62,19 +72,32 @@ function validateUnique(id, objToValidate, relation, keyword) {
   })
 
   const nodesWithUniqueField = nodesWithFields.filter(f => f.fieldNodes.length > 0)
-  const groups = groupBy(nodesWithUniqueField, f => f.fieldNodes[0].value)
+  // when there is no value, the key is assumed to be a property name
+  const groups = groupBy(nodesWithUniqueField, f => f.fieldNodes[0].value ?? f.parentProperty)
 
   const duplicateGroups = Object.entries(groups).filter(([, value]) => value.length > 1)
 
   const duplicateDiagnostics = duplicateGroups.map(([key, nodes]) => {
+    const representativeNode = nodes[0]
+    const representativePointerSegments = representativeNode.pointer.split('/')
+    const lastSegment = representativePointerSegments[representativePointerSegments.length - 1]
+    const nodeIsPropertyName = lastSegment === representativeNode.parentProperty
+    let message
+    if (nodeIsPropertyName) {      
+      const parentSegment = representativePointerSegments[representativePointerSegments.length - 2]
+      message = `duplicate ${parentSegment} property '${representativeNode.parentProperty}', property names in ${parentSegment} must be unique`
+    } else {
+      message = `duplicate ${nodes[0].fieldNodes[0].parentProperty} '${key}', property '${nodes[0].fieldNodes[0].parentProperty}' must be unique`
+    }
+
     return {
-      instancePath: formatSelector(selector),
+      instancePath: scope.pointer,
       keyword: keyword ?? "unique",
-      message: `duplicate ${nodes[0].fieldNodes[0].parentProperty} '${key}', property '${nodes[0].fieldNodes[0].parentProperty}' must be unique`,
+      message: message,
       params: {
         relationId: id,
         duplicateValue: key,
-        duplicates: nodes.map(n => n.pointer)
+        duplicates: nodes.map(n => scope.pointer + n.pointer)
       }
     }
   })
@@ -83,8 +106,18 @@ function validateUnique(id, objToValidate, relation, keyword) {
 }
 
 function validateKey(id, objToValidate, relation) {
+  const scope = relation.scope ?? "$."
+
+  const scopes = JSONPath({path: scope, resultType: 'all', json: objToValidate})
+
+  const diagnostics = scopes.flatMap(scope => validateKeyScope(id, scope, relation))
+  
+  return diagnostics
+}
+
+function validateKeyScope(id, scope, relation) {
   const { selector, field } = relation
-  const selectedNodes = JSONPath({path: selector, resultType: 'all', json: objToValidate })
+  const selectedNodes = JSONPath({path: selector, resultType: 'all', json: scope.value })
   const selectedFields = selectedNodes.map(node => {
     return {
       ...node,
@@ -94,45 +127,24 @@ function validateKey(id, objToValidate, relation) {
 
   const fieldsWithoutKey = selectedFields.filter(f => f.fieldNodes.length == 0)
   const missingKeyDiagnostics = fieldsWithoutKey.map(node => {
-    const missingFieldName = formatField(field)
+    const missingFieldPointer = JSONPath.toPointer(JSONPath.toPathArray(field))
+    // remove the leading '/'
+    const missingFieldRelativePointer = missingFieldPointer.substring(1)
 
     return {
-      instancePath: node.pointer,
+      instancePath: scope.pointer + node.pointer,
       keyword: "key",
-      message: `property '${missingFieldName}' is required`,
+      message: `property '${missingFieldRelativePointer}' is required`,
       params: {
         relationId: id,
-        missingProperty: missingFieldName
+        missingProperty: missingFieldPointer
       }
     }
   })
 
-  const duplicateKeyDiagnostics = validateUnique(id, objToValidate, relation, "key")
+  const duplicateKeyDiagnostics = validateUniqueScope(id, scope, relation, "key")
 
   return missingKeyDiagnostics.concat(duplicateKeyDiagnostics)
-}
-
-function formatPathToNode(node) {
-  return '/' + node.path.slice(1).join('/')
-}
-
-function formatSelector(selector) {
-  const converted = selector.replace('$', '').replace('.', '/').replace(/\[\d*?:\d*?(:\d*?)?\]/, '/')
-  if (converted[converted.length - 1] === '/') {
-    return converted.substring(0, converted.length - 1);
-  }
-
-  return converted;
-}
-
-function formatField(field) {
-  const fieldFromParent = formatSelector(field);
-  if (fieldFromParent[0] === '/') {
-    return fieldFromParent.substring(1)
-  }
-
-  return fieldFromParent;
-
 }
 
 function groupBy(xs, getKey) {

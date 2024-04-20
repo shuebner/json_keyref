@@ -3,19 +3,22 @@
   "relations": {
     "customerIdKey": {
       "key": {
-        "selector": "$.customers[:]",
+        "scope": "$.customers",
+        "selector": "$.*",
         "field": "$.id"
       }
     },
     "uniqueCustomerFriendlyName": {
       "unique": {
-        "selector": "$.customers[:]",
+        "scope": "$.customers",
+        "selector": "$.*",
         "field": "$.friendly_name"
       }
     },
     "productIdKey": {
       "key": {
-        "selector": "$.products[:]",
+        "scope": "$.products",
+        "selector": "$.*",
         "field": "$.id"
       }
     },
