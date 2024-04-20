@@ -1,4 +1,4 @@
-const jp = require('jsonpath')
+const { JSONPath } = require('jsonpath-plus')
 
 function validateRels(objToValidate, relationsSpec) {
   const { relations } = relationsSpec
@@ -17,20 +17,20 @@ function validateRels(objToValidate, relationsSpec) {
 function validateKeyRef(id, objToValidate, refRelation, keyRelation) {
   const { selector: refSelector, field: refField } = refRelation
   const { selector: keySelector, field: keyField } = keyRelation
-  const refNodes = jp.nodes(objToValidate, refSelector);
+  const refNodes = JSONPath({path: refSelector, resultType: 'all', json: objToValidate })
   const refNodesWithFields = refNodes.map(node => {
     return {
       ...node,
-      fieldNodes: jp.nodes(node.value, refField)
+      fieldNodes: JSONPath({path: refField, resultType: 'all', json: node.value })
     }
   })
   const refNodesWithUniqueField = refNodesWithFields.filter(f => f.fieldNodes.length > 0)
 
-  const keyNodes = jp.nodes(objToValidate, keySelector);
+  const keyNodes = JSONPath({path: keySelector, resultType: 'all', json: objToValidate })
   const keyNodesWithFields = keyNodes.map(node => {
     return {
       ...node,
-      fieldNodes: jp.nodes(node.value, keyField)
+      fieldNodes: JSONPath({path: keyField, resultType: 'all', json: node.value })
     }
   })
   const keyNodesWithUniqueField = keyNodesWithFields.filter(f => f.fieldNodes.length > 0)
@@ -40,7 +40,7 @@ function validateKeyRef(id, objToValidate, refRelation, keyRelation) {
 
   return invalidRefNodes.map(n => {
     return {
-      instancePath: formatPathToNode(n),
+      instancePath: n.pointer,
       keyword: "keyRef",
       message: `invalid keyRef '${n.fieldNodes[0].value}'`,
       params: {
@@ -53,11 +53,11 @@ function validateKeyRef(id, objToValidate, refRelation, keyRelation) {
 
 function validateUnique(id, objToValidate, relation, keyword) {
   const { selector, field } = relation
-  const selectedNodes = jp.nodes(objToValidate, selector);
+  const selectedNodes = JSONPath({path: selector, resultType: 'all', json: objToValidate })
   const nodesWithFields = selectedNodes.map(node => {
     return {
       ...node,
-      fieldNodes: jp.nodes(node.value, field)
+      fieldNodes: JSONPath({path: field, resultType: 'all', json: node.value })
     }
   })
 
@@ -70,11 +70,11 @@ function validateUnique(id, objToValidate, relation, keyword) {
     return {
       instancePath: formatSelector(selector),
       keyword: keyword ?? "unique",
-      message: `duplicate ${nodes[0].fieldNodes[0].path.slice(1)} '${key}', property '${nodes[0].fieldNodes[0].path.slice(1)}' must be unique`,
+      message: `duplicate ${nodes[0].fieldNodes[0].parentProperty} '${key}', property '${nodes[0].fieldNodes[0].parentProperty}' must be unique`,
       params: {
         relationId: id,
         duplicateValue: key,
-        duplicates: nodes.map(formatPathToNode)
+        duplicates: nodes.map(n => n.pointer)
       }
     }
   })
@@ -84,11 +84,11 @@ function validateUnique(id, objToValidate, relation, keyword) {
 
 function validateKey(id, objToValidate, relation) {
   const { selector, field } = relation
-  const selectedNodes = jp.nodes(objToValidate, selector);
+  const selectedNodes = JSONPath({path: selector, resultType: 'all', json: objToValidate })
   const selectedFields = selectedNodes.map(node => {
     return {
       ...node,
-      fieldNodes: jp.nodes(node.value, field)
+      fieldNodes: JSONPath({path: field, resultType: 'all', json: node.value })
     }
   })
 
@@ -97,7 +97,7 @@ function validateKey(id, objToValidate, relation) {
     const missingFieldName = formatField(field)
 
     return {
-      instancePath: formatPathToNode(node),
+      instancePath: node.pointer,
       keyword: "key",
       message: `property '${missingFieldName}' is required`,
       params: {

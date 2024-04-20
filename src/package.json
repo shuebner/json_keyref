@@ -10,6 +10,6 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "jsonpath": "^1.1.1"
+    "jsonpath-plus": "^8.1.0"
   }
 }
