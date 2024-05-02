@@ -13,6 +13,13 @@
         "selector": "$.plc_configuration.blockSequence.*.varDefinitions.*",
         "field": "$.~"
       }
+    },
+    "varDefinitionByteOffsetUnique": {
+      "unique": {
+        "scope": "$.*.plc_configuration.blockSequence.*.varDefinitions",
+        "selector": "$.*",
+        "field": "$.byteOffset"
+      }
     }
   }
 }

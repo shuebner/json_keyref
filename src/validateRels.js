@@ -78,16 +78,18 @@ function validateUniqueScope(id, scope, relation, keyword) {
   const duplicateGroups = Object.entries(groups).filter(([, value]) => value.length > 1)
 
   const duplicateDiagnostics = duplicateGroups.map(([key, nodes]) => {
-    const representativeNode = nodes[0]
-    const representativePointerSegments = representativeNode.pointer.split('/')
-    const lastSegment = representativePointerSegments[representativePointerSegments.length - 1]
-    const nodeIsPropertyName = lastSegment === representativeNode.parentProperty
+    const node = nodes[0]
+    const field = node.fieldNodes[0]
+    const pointerSegments = node.pointer.split('/').concat(field.pointer.split('/')).filter(segment => segment)
+    const lastSegment = pointerSegments[pointerSegments.length - 1]
+
+    const nodeIsPropertyName = lastSegment === node.parentProperty
     let message
     if (nodeIsPropertyName) {      
-      const parentSegment = representativePointerSegments[representativePointerSegments.length - 2]
-      message = `duplicate ${parentSegment} property '${representativeNode.parentProperty}', property names in ${parentSegment} must be unique`
+      const parentSegment = pointerSegments[pointerSegments.length - 2]
+      message = `duplicate ${parentSegment} property '${node.parentProperty}', property names in ${parentSegment} must be unique`
     } else {
-      message = `duplicate ${nodes[0].fieldNodes[0].parentProperty} '${key}', property '${nodes[0].fieldNodes[0].parentProperty}' must be unique`
+      message = `duplicate ${field.parentProperty} '${key}', property '${field.parentProperty}' must be unique`
     }
 
     return {

@@ -1,0 +1,86 @@
+{
+  "sample": [
+    {
+      "equipment_number": "ma_5001",
+      "created_at": "2022-05-31T06:22:41.453153+00:00",
+      "changed_at": "2022-05-31T06:22:41.453155+00:00",
+      "location_information": {
+        "region": "eu",
+        "country": "de",
+        "plantId": "er",
+        "siteId": "dev",
+        "hallId": "dev",
+        "productionLine": "pl_50"
+      },
+      "plc_configuration": {
+        "ipAddress": "$(Plcs:Plc5001:IpAddress)",
+        "portNumber": "$(Plcs:Plc5001:Port)",
+        "plcType": "S7300",
+        "rackNumber": 0,
+        "slotNumber": 2,
+        "blockSequence": [
+          {
+            "accessType": "Read",
+            "blockType": "DB",
+            "dbNumber": 512,
+            "offset": 60,
+            "itemType": "Byte",
+            "itemAmount": 10,
+            "waitTimeMs": 0,
+            "varDefinitions": {
+              "s000_all-key-switches-in-setup": {
+                "byteOffset": 2,
+                "bitOffset": 0,
+                "amount": 1,
+                "varType": "Boolean"
+              },
+              "s000_something_else": {
+                "byteOffset": 2,
+                "bitOffset": 0,
+                "amount": 1,
+                "varType": "Boolean"
+              }
+            }
+          },
+          {
+            "accessType": "Read",
+            "blockType": "DB",
+            "dbNumber": 8,
+            "offset": 60,
+            "itemType": "Byte",
+            "itemAmount": 10,
+            "waitTimeMs": 0,
+            "varDefinitions": {
+              "s001_all-key-switches-in-setup": {
+                "byteOffset": 2,
+                "bitOffset": 0,
+                "amount": 1,
+                "varType": "Boolean"
+              }
+            }
+          }
+        ]
+      },
+      "interpreter_configuration": {},
+      "text_configuration": {
+        "localizations": {},
+        "definitionType": "TextDefinition"
+      }
+    }
+  ],
+  "expectedErrors": [
+    {
+      "instancePath": "/0/plc_configuration/blockSequence/0/varDefinitions",
+      "keyword": "unique",
+      "message": "duplicate byteOffset '2', property 'byteOffset' must be unique",
+      "params": {
+        "relationId": "varDefinitionByteOffsetUnique",
+        "duplicateValue": "2",
+        "duplicates": [
+          "/0/plc_configuration/blockSequence/0/varDefinitions/s000_all-key-switches-in-setup",
+          "/0/plc_configuration/blockSequence/0/varDefinitions/s000_something_else"
+        ]
+      }
+    }
+  ]
+}
