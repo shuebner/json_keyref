@@ -1,0 +1,75 @@
+{
+  "sample": [
+    {
+      "equipment_number": "ma_5001",
+      "created_at": "2022-05-31T06:22:41.453153+00:00",
+      "changed_at": "2022-05-31T06:22:41.453155+00:00",
+      "location_information": {
+        "region": "eu",
+        "country": "de",
+        "plantId": "er",
+        "siteId": "dev",
+        "hallId": "dev",
+        "productionLine": "pl_50"
+      },
+      "plc_configuration": {
+        "ipAddress": "$(Plcs:Plc5001:IpAddress)",
+        "portNumber": "$(Plcs:Plc5001:Port)",
+        "plcType": "S7300",
+        "rackNumber": 0,
+        "slotNumber": 2,
+        "blockSequence": []
+      },
+      "interpreter_configuration": {},
+      "text_configuration": {
+        "localizations": {},
+        "definitionType": "TextDefinition"
+      }
+    },
+    {
+      "equipment_number": "ma_5001",
+      "created_at": "2022-05-31T06:22:41.453153+00:00",
+      "changed_at": "2022-05-31T06:22:41.453155+00:00",
+      "location_information": {
+        "region": "eu",
+        "country": "de",
+        "plantId": "er",
+        "siteId": "dev",
+        "hallId": "dev",
+        "productionLine": "pl_50"
+      },
+      "plc_configuration": {
+        "ipAddress": "$(Plcs:Plc5002:IpAddress)",
+        "portNumber": "$(Plcs:Plc5002:Port)",
+        "plcType": "S7300",
+        "rackNumber": 0,
+        "slotNumber": 2,
+        "blockSequence": []
+      },
+      "interpreter_configuration": {},
+      "text_configuration": {
+        "localizations": {
+          "1": {
+            "de": "GM Teil fehlt im Einlauf"
+          }
+        },
+        "definitionType": "TextDefinition"
+      }
+    }
+  ],
+  "expectedErrors": [
+    {
+      "instancePath": "",
+      "keyword": "key",
+      "message": "duplicate equipment_number 'ma_5001', property 'equipment_number' must be unique",
+      "params": {
+        "relationId": "equipmentNumberKey",
+        "duplicateValue": "ma_5001",
+        "duplicates": [
+          "/0",
+          "/1"
+        ]
+      }
+    }
+  ]
+}

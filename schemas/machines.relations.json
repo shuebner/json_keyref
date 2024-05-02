@@ -1,6 +1,12 @@
 {
   "id": "urn:machines",
   "relations": {
+    "equipmentNumberKey": {
+      "key": {
+        "selector": "$.*",
+        "field": "$.equipment_number"
+      }
+    },
     "varDefinitionKey": {
       "key": {
         "scope": "$.*",
