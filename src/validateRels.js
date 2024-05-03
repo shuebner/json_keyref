@@ -17,20 +17,20 @@ function validateRels(objToValidate, relationsSpec) {
 function validateKeyRef(id, objToValidate, refRelation, keyRelation) {
   const { selector: refSelector, field: refField } = refRelation
   const { selector: keySelector, field: keyField } = keyRelation
-  const refNodes = JSONPath({path: refSelector, resultType: 'all', json: objToValidate })
+  const refNodes = JSONPath({ path: refSelector, resultType: 'all', json: objToValidate })
   const refNodesWithFields = refNodes.map(node => {
     return {
       ...node,
-      fieldNodes: JSONPath({path: refField, resultType: 'all', json: node.value })
+      fieldNodes: JSONPath({ path: refField, resultType: 'all', json: node.value })
     }
   })
   const refNodesWithUniqueField = refNodesWithFields.filter(f => f.fieldNodes.length > 0)
 
-  const keyNodes = JSONPath({path: keySelector, resultType: 'all', json: objToValidate })
+  const keyNodes = JSONPath({ path: keySelector, resultType: 'all', json: objToValidate })
   const keyNodesWithFields = keyNodes.map(node => {
     return {
       ...node,
-      fieldNodes: JSONPath({path: keyField, resultType: 'all', json: node.value })
+      fieldNodes: JSONPath({ path: keyField, resultType: 'all', json: node.value })
     }
   })
   const keyNodesWithUniqueField = keyNodesWithFields.filter(f => f.fieldNodes.length > 0)
@@ -54,30 +54,30 @@ function validateKeyRef(id, objToValidate, refRelation, keyRelation) {
 function validateUnique(id, objToValidate, relation) {
   const scope = relation.scope ?? "$."
 
-  const scopes = JSONPath({path: scope, resultType: 'all', json: objToValidate})
+  const scopes = JSONPath({ path: scope, resultType: 'all', json: objToValidate })
 
   const diagnostics = scopes.flatMap(scope => validateUniqueScope(id, scope, relation))
-  
+
   return diagnostics
 }
 
 function validateUniqueScope(id, scope, relation, keyword) {
   const { selector, field } = relation
-  const selectedNodes = JSONPath({path: selector, resultType: 'all', json: scope.value })
+  const selectedNodes = JSONPath({ path: selector, resultType: 'all', json: scope.value })
   const nodesWithFields = selectedNodes.map(node => {
     return {
       ...node,
-      fieldNodes: JSONPath({path: field, resultType: 'all', json: node.value })
+      fieldNodes: JSONPath({ path: field, resultType: 'all', json: node.value })
     }
   })
 
   const nodesWithUniqueField = nodesWithFields.filter(f => f.fieldNodes.length > 0)
   // when there is no value, the key is assumed to be a property name
-  const groups = groupBy(nodesWithUniqueField, f => f.fieldNodes[0].value ?? f.parentProperty)
+  const groups = groupByArray(nodesWithUniqueField, f => f.fieldNodes[0].value ?? f.parentProperty)
 
-  const duplicateGroups = Object.entries(groups).filter(([, value]) => value.length > 1)
+  const duplicateGroups = groups.filter(({ values }) => values.length > 1)
 
-  const duplicateDiagnostics = duplicateGroups.map(([key, nodes]) => {
+  const duplicateDiagnostics = duplicateGroups.map(({ key, values: nodes }) => {
     const node = nodes[0]
     const field = node.fieldNodes[0]
     const pointerSegments = node.pointer.split('/').concat(field.pointer.split('/')).filter(segment => segment)
@@ -85,7 +85,7 @@ function validateUniqueScope(id, scope, relation, keyword) {
 
     const nodeIsPropertyName = lastSegment === node.parentProperty
     let message
-    if (nodeIsPropertyName) {      
+    if (nodeIsPropertyName) {
       const parentSegment = pointerSegments[pointerSegments.length - 2]
       message = `duplicate ${parentSegment} property '${node.parentProperty}', property names in ${parentSegment} must be unique`
     } else {
@@ -110,20 +110,20 @@ function validateUniqueScope(id, scope, relation, keyword) {
 function validateKey(id, objToValidate, relation) {
   const scope = relation.scope ?? "$."
 
-  const scopes = JSONPath({path: scope, resultType: 'all', json: objToValidate})
+  const scopes = JSONPath({ path: scope, resultType: 'all', json: objToValidate })
 
   const diagnostics = scopes.flatMap(scope => validateKeyScope(id, scope, relation))
-  
+
   return diagnostics
 }
 
 function validateKeyScope(id, scope, relation) {
   const { selector, field } = relation
-  const selectedNodes = JSONPath({path: selector, resultType: 'all', json: scope.value })
+  const selectedNodes = JSONPath({ path: selector, resultType: 'all', json: scope.value })
   const selectedFields = selectedNodes.map(node => {
     return {
       ...node,
-      fieldNodes: JSONPath({path: field, resultType: 'all', json: node.value })
+      fieldNodes: JSONPath({ path: field, resultType: 'all', json: node.value })
     }
   })
 
@@ -149,11 +149,20 @@ function validateKeyScope(id, scope, relation) {
   return missingKeyDiagnostics.concat(duplicateKeyDiagnostics)
 }
 
-function groupBy(xs, getKey) {
-  return xs.reduce(function (rv, x) {
-    (rv[getKey(x)] = rv[getKey(x)] || []).push(x);
-    return rv;
-  }, {});
-};
+
+function groupByArray(xs, getKey) {
+  return xs.reduce(
+    function (rv, x) {
+      let v = getKey(x);
+      let el = rv.find((r) => r && r.key === v);
+      if (el) {
+        el.values.push(x);
+      } else {
+        rv.push({ key: v, values: [x] });
+      }
+      return rv;
+    },
+    []);
+  }
 
 module.exports = validateRels

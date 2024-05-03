@@ -75,7 +75,7 @@
       "message": "duplicate byteOffset '2', property 'byteOffset' must be unique",
       "params": {
         "relationId": "varDefinitionByteOffsetUnique",
-        "duplicateValue": "2",
+        "duplicateValue": 2,
         "duplicates": [
           "/0/plc_configuration/blockSequence/0/varDefinitions/s000_all-key-switches-in-setup",
           "/0/plc_configuration/blockSequence/0/varDefinitions/s000_something_else"
