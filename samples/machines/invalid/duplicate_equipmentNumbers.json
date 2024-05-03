@@ -61,7 +61,7 @@
     {
       "instancePath": "",
       "keyword": "key",
-      "message": "duplicate equipment_number 'ma_5001', property 'equipment_number' must be unique",
+      "message": "duplicate 'equipment_number' 'ma_5001', 'equipment_number' must be unique",
       "params": {
         "relationId": "equipmentNumberKey",
         "duplicateValue": "ma_5001",

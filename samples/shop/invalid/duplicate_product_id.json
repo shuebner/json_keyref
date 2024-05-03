@@ -15,7 +15,7 @@
     {
       "instancePath": "/products",
       "keyword": "key",
-      "message": "duplicate id 'ABC_1', property 'id' must be unique",
+      "message": "duplicate 'id' 'ABC_1', 'id' must be unique",
       "params": {
         "relationId": "productIdKey",
         "duplicateValue": "ABC_1",

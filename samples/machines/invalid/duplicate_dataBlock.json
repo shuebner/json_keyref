@@ -1,0 +1,63 @@
+{
+  "sample": [
+    {
+      "equipment_number": "ma_5001",
+      "created_at": "2022-05-31T06:22:41.453153+00:00",
+      "changed_at": "2022-05-31T06:22:41.453155+00:00",
+      "location_information": {
+        "region": "eu",
+        "country": "de",
+        "plantId": "er",
+        "siteId": "dev",
+        "hallId": "dev",
+        "productionLine": "pl_50"
+      },
+      "plc_configuration": {
+        "ipAddress": "$(Plcs:Plc5001:IpAddress)",
+        "portNumber": "$(Plcs:Plc5001:Port)",
+        "plcType": "S7300",
+        "rackNumber": 0,
+        "slotNumber": 2,
+        "blockSequence": [
+          {
+            "accessType": "Read",
+            "blockType": "DB",
+            "dbNumber": 512,
+            "offset": 60,
+            "itemType": "Byte",
+            "itemAmount": 10,
+            "waitTimeMs": 0,
+            "varDefinitions": {}
+          },
+          {
+            "accessType": "Read",
+            "blockType": "DB",
+            "dbNumber": 512,
+            "offset": 60,
+            "itemType": "Byte",
+            "itemAmount": 160,
+            "waitTimeMs": 10,
+            "varDefinitions": {}
+          }
+        ]
+      },
+      "interpreter_configuration": {},
+      "text_configuration": {}
+    }
+  ],
+  "expectedErrors": [
+    {
+      "instancePath": "/0/plc_configuration/blockSequence",
+      "keyword": "unique",
+      "message": "duplicate composite ('dbNumber', 'offset') (512, 60), composite ('dbNumber', 'offset') must be unique",
+      "params": {
+        "relationId": "dataBlockUniqueness",
+        "duplicateValue": [512, 60],
+        "duplicates": [
+          "/0/plc_configuration/blockSequence/0",
+          "/0/plc_configuration/blockSequence/1"
+        ]
+      }
+    }
+  ]
+}

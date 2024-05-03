@@ -17,7 +17,7 @@
     {
       "instancePath": "/customers",
       "keyword": "unique",
-      "message": "duplicate friendly_name 'john_doe', property 'friendly_name' must be unique",
+      "message": "duplicate 'friendly_name' 'john_doe', 'friendly_name' must be unique",
       "params": {
         "relationId": "uniqueCustomerFriendlyName",
         "duplicateValue": "john_doe",

@@ -20,6 +20,16 @@
         "selector": "$.*",
         "field": "$.byteOffset"
       }
+    },
+    "dataBlockUniqueness": {
+      "unique": {
+        "scope": "$.*.plc_configuration.blockSequence",
+        "selector": "$.*",
+        "field": [
+          "$.dbNumber",
+          "$.offset"
+        ]
+      }
     }
   }
 }

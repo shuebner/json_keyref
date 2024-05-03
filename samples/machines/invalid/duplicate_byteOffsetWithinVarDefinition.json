@@ -72,7 +72,7 @@
     {
       "instancePath": "/0/plc_configuration/blockSequence/0/varDefinitions",
       "keyword": "unique",
-      "message": "duplicate byteOffset '2', property 'byteOffset' must be unique",
+      "message": "duplicate 'byteOffset' 2, 'byteOffset' must be unique",
       "params": {
         "relationId": "varDefinitionByteOffsetUnique",
         "duplicateValue": 2,

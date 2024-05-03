@@ -24,7 +24,7 @@
     {
       "instancePath": "/customers",
       "keyword": "key",
-      "message": "duplicate id 'C1', property 'id' must be unique",
+      "message": "duplicate 'id' 'C1', 'id' must be unique",
       "params": {
         "relationId": "customerIdKey",
         "duplicateValue": "C1",
@@ -37,7 +37,7 @@
     {
       "instancePath": "/customers",
       "keyword": "key",
-      "message": "duplicate id 'C2', property 'id' must be unique",
+      "message": "duplicate 'id' 'C2', 'id' must be unique",
       "params": {
         "relationId": "customerIdKey",
         "duplicateValue": "C2",

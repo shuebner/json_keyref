@@ -62,34 +62,45 @@ function validateUnique(id, objToValidate, relation) {
 }
 
 function validateUniqueScope(id, scope, relation, keyword) {
-  const { selector, field } = relation
+  const selector = relation.selector
+  const fields = typeof relation.field === 'string' ? [relation.field] : relation.field
   const selectedNodes = JSONPath({ path: selector, resultType: 'all', json: scope.value })
   const nodesWithFields = selectedNodes.map(node => {
     return {
       ...node,
-      fieldNodes: JSONPath({ path: field, resultType: 'all', json: node.value })
+      fieldNodes: invertNestedArray(fields.map(field => JSONPath({ path: field, resultType: 'all', json: node.value })))
     }
   })
 
   const nodesWithUniqueField = nodesWithFields.filter(f => f.fieldNodes.length > 0)
   // when there is no value, the key is assumed to be a property name
-  const groups = groupByArray(nodesWithUniqueField, f => f.fieldNodes[0].value ?? f.parentProperty)
+  const groups = groupByArray(nodesWithUniqueField, f => f.fieldNodes[0].length === 1 && !f.fieldNodes[0][0].value
+    ? f.parentProperty
+    : f.fieldNodes[0].map(f => f.value),
+    tupleEquals)
 
   const duplicateGroups = groups.filter(({ values }) => values.length > 1)
 
   const duplicateDiagnostics = duplicateGroups.map(({ key, values: nodes }) => {
     const node = nodes[0]
-    const field = node.fieldNodes[0]
-    const pointerSegments = node.pointer.split('/').concat(field.pointer.split('/')).filter(segment => segment)
-    const lastSegment = pointerSegments[pointerSegments.length - 1]
-
-    const nodeIsPropertyName = lastSegment === node.parentProperty
+    const fields = node.fieldNodes[0]
+    let nodeIsPropertyName = false
     let message
-    if (nodeIsPropertyName) {
-      const parentSegment = pointerSegments[pointerSegments.length - 2]
-      message = `duplicate ${parentSegment} property '${node.parentProperty}', property names in ${parentSegment} must be unique`
-    } else {
-      message = `duplicate ${field.parentProperty} '${key}', property '${field.parentProperty}' must be unique`
+    if (fields.length === 1) {
+      const field = fields[0]
+      const pointerSegments = node.pointer.split('/').concat(field.pointer.split('/')).filter(segment => segment)
+      const lastSegment = pointerSegments[pointerSegments.length - 1]
+      nodeIsPropertyName = lastSegment === node.parentProperty
+      if (nodeIsPropertyName) {
+        const parentSegment = pointerSegments[pointerSegments.length - 2]
+        message = `duplicate ${parentSegment} property '${node.parentProperty}', property names in ${parentSegment} must be unique`
+      }
+    }
+
+    if (!message) {
+      const fieldDescription = toFieldDescription(fields)
+      const keyDescription = toValueDescription(key)
+      message = `duplicate ${fieldDescription} ${keyDescription}, ${fieldDescription} must be unique`      
     }
 
     return {
@@ -98,7 +109,7 @@ function validateUniqueScope(id, scope, relation, keyword) {
       message: message,
       params: {
         relationId: id,
-        duplicateValue: key,
+        duplicateValue: key.length === 1 ? key[0] : key,
         duplicates: nodes.map(n => scope.pointer + n.pointer)
       }
     }
@@ -150,11 +161,11 @@ function validateKeyScope(id, scope, relation) {
 }
 
 
-function groupByArray(xs, getKey) {
+function groupByArray(xs, getKey, keyEquals) {
   return xs.reduce(
     function (rv, x) {
       let v = getKey(x);
-      let el = rv.find((r) => r && r.key === v);
+      let el = rv.find((r) => r && keyEquals(r.key, v));
       if (el) {
         el.values.push(x);
       } else {
@@ -164,5 +175,54 @@ function groupByArray(xs, getKey) {
     },
     []);
   }
+
+function invertNestedArray(arr) {
+  const maxInnerLength = arr.reduce((max, innerArr) => Math.max(max, innerArr.length), 0);  
+  const result = new Array(maxInnerLength).fill(null).map(() => []);
+
+  arr.forEach((innerArr, outerIndex) => {
+    innerArr.forEach((element, index) => {
+      result[index][outerIndex] = element;
+    });
+  });
+
+  return result;
+}
+
+function tupleEquals(t1, t2) {
+  if (t1.length !== t2.length) {
+    return false
+  }
+
+  for (let index = 0; index < t1.length; index++) {
+    if (t1[index] !== t2[index]) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function toFieldDescription(fields) {
+  return fields.length === 1
+    ? toSingleFieldDescription(fields[0])
+    : `composite (${fields.map(f => toSingleFieldDescription(f)).join(', ')})`
+}
+
+function toSingleFieldDescription(field) {
+  return `'${field.parentProperty}'`
+}
+
+function toValueDescription(value) {
+  return value.length === 1
+    ? toSingleValueDescription(value[0])
+    : `(${value.map(k => toSingleValueDescription(k)).join(', ')})`
+}
+
+function toSingleValueDescription(value) {  
+  return typeof value === 'string'
+    ? `'${value}'`
+    : value
+}
 
 module.exports = validateRels
