@@ -1,6 +1,6 @@
-const { JSONPath } = require('jsonpath-plus')
+import jp = require('jsonpath-plus')
 
-function validateRels(objToValidate, relationsSpec) {
+function validateRels(objToValidate: object, relationsSpec: any) {
   const { relations } = relationsSpec
   const relationIds = Object.keys(relations)
   const keyIds = relationIds.filter(id => relations[id].key)
@@ -14,23 +14,23 @@ function validateRels(objToValidate, relationsSpec) {
   return keyDiagnostics.concat(uniqueDiagnostics).concat(keyrefDiagnostics)
 }
 
-function validateKeyRef(id, objToValidate, refRelation, keyRelation) {
+function validateKeyRef(id: string, objToValidate: object, refRelation: any, keyRelation: any) {
   const { selector: refSelector, field: refField } = refRelation
   const { selector: keySelector, field: keyField } = keyRelation
-  const refNodes = JSONPath({ path: refSelector, resultType: 'all', json: objToValidate })
+  const refNodes = jp.JSONPath({ path: refSelector, resultType: 'all', json: objToValidate })
   const refNodesWithFields = refNodes.map(node => {
     return {
       ...node,
-      fieldNodes: JSONPath({ path: refField, resultType: 'all', json: node.value })
+      fieldNodes: jp.JSONPath({ path: refField, resultType: 'all', json: node.value })
     }
   })
   const refNodesWithUniqueField = refNodesWithFields.filter(f => f.fieldNodes.length > 0)
 
-  const keyNodes = JSONPath({ path: keySelector, resultType: 'all', json: objToValidate })
+  const keyNodes = jp.JSONPath({ path: keySelector, resultType: 'all', json: objToValidate })
   const keyNodesWithFields = keyNodes.map(node => {
     return {
       ...node,
-      fieldNodes: JSONPath({ path: keyField, resultType: 'all', json: node.value })
+      fieldNodes: jp.JSONPath({ path: keyField, resultType: 'all', json: node.value })
     }
   })
   const keyNodesWithUniqueField = keyNodesWithFields.filter(f => f.fieldNodes.length > 0)
@@ -51,12 +51,12 @@ function validateKeyRef(id, objToValidate, refRelation, keyRelation) {
   })
 }
 
-function validateUnique(id, objToValidate, relation) {
+function validateUnique(id: string, objToValidate: object, relation: any) {
   const scope = relation.scope ?? "$."
 
-  const scopes = JSONPath({ path: scope, resultType: 'all', json: objToValidate })
+  const scopes = jp.JSONPath({ path: scope, resultType: 'all', json: objToValidate })
 
-  const diagnostics = scopes.flatMap(scope => validateUniqueScope(id, scope, relation))
+  const diagnostics = scopes.flatMap(scope => validateUniqueScope(id, scope, relation, "unique"))
 
   return diagnostics
 }
@@ -64,17 +64,17 @@ function validateUnique(id, objToValidate, relation) {
 function validateUniqueScope(id, scope, relation, keyword) {
   const selector = relation.selector
   const fields = typeof relation.field === 'string' ? [relation.field] : relation.field
-  const selectedNodes = JSONPath({ path: selector, resultType: 'all', json: scope.value })
+  const selectedNodes = jp.JSONPath({ path: selector, resultType: 'all', json: scope.value })
   const nodesWithFields = selectedNodes.map(node => {
     return {
       ...node,
-      fieldNodes: invertNestedArray(fields.map(field => JSONPath({ path: field, resultType: 'all', json: node.value })))
+      fieldNodes: invertNestedArray(fields.map(field => jp.JSONPath({ path: field, resultType: 'all', json: node.value })))
     }
   })
 
   const nodesWithUniqueField = nodesWithFields.filter(f => f.fieldNodes.length > 0)
   // when there is no value, the key is assumed to be a property name
-  const groups = groupByArray(nodesWithUniqueField, f => f.fieldNodes[0].length === 1 && !f.fieldNodes[0][0].value
+  const groups = groupByArray<any, any>(nodesWithUniqueField, f => f.fieldNodes[0].length === 1 && !f.fieldNodes[0][0].value
     ? f.parentProperty
     : f.fieldNodes[0].map(f => f.value),
     tupleEquals)
@@ -105,7 +105,7 @@ function validateUniqueScope(id, scope, relation, keyword) {
 
     return {
       instancePath: scope.pointer,
-      keyword: keyword ?? "unique",
+      keyword: keyword,
       message: message,
       params: {
         relationId: id,
@@ -121,7 +121,7 @@ function validateUniqueScope(id, scope, relation, keyword) {
 function validateKey(id, objToValidate, relation) {
   const scope = relation.scope ?? "$."
 
-  const scopes = JSONPath({ path: scope, resultType: 'all', json: objToValidate })
+  const scopes = jp.JSONPath({ path: scope, resultType: 'all', json: objToValidate })
 
   const diagnostics = scopes.flatMap(scope => validateKeyScope(id, scope, relation))
 
@@ -130,17 +130,17 @@ function validateKey(id, objToValidate, relation) {
 
 function validateKeyScope(id, scope, relation) {
   const { selector, field } = relation
-  const selectedNodes = JSONPath({ path: selector, resultType: 'all', json: scope.value })
+  const selectedNodes = jp.JSONPath({ path: selector, resultType: 'all', json: scope.value })
   const selectedFields = selectedNodes.map(node => {
     return {
       ...node,
-      fieldNodes: JSONPath({ path: field, resultType: 'all', json: node.value })
+      fieldNodes: jp.JSONPath({ path: field, resultType: 'all', json: node.value })
     }
   })
 
   const fieldsWithoutKey = selectedFields.filter(f => f.fieldNodes.length == 0)
   const missingKeyDiagnostics = fieldsWithoutKey.map(node => {
-    const missingFieldPointer = JSONPath.toPointer(JSONPath.toPathArray(field))
+    const missingFieldPointer = jp.JSONPath.toPointer(jp.JSONPath.toPathArray(field))
     // remove the leading '/'
     const missingFieldRelativePointer = missingFieldPointer.substring(1)
 
@@ -161,11 +161,11 @@ function validateKeyScope(id, scope, relation) {
 }
 
 
-function groupByArray(xs, getKey, keyEquals) {
-  return xs.reduce(
+function groupByArray<TValue, TKey>(xs: TValue[], getKey: (o: TValue) => TKey, keyEquals: (one: TKey, other: TKey) => boolean): {key: TKey, values: TValue[]}[] {
+  return xs.reduce<{key: TKey, values: TValue[]}[]>(
     function (rv, x) {
-      let v = getKey(x);
-      let el = rv.find((r) => r && keyEquals(r.key, v));
+      const v = getKey(x);
+      const el = rv.find((r) => r && keyEquals(r.key, v));
       if (el) {
         el.values.push(x);
       } else {
@@ -176,7 +176,7 @@ function groupByArray(xs, getKey, keyEquals) {
     []);
   }
 
-function invertNestedArray(arr) {
+function invertNestedArray(arr: [[]]) {
   const maxInnerLength = arr.reduce((max, innerArr) => Math.max(max, innerArr.length), 0);  
   const result = new Array(maxInnerLength).fill(null).map(() => []);
 
@@ -189,7 +189,7 @@ function invertNestedArray(arr) {
   return result;
 }
 
-function tupleEquals(t1, t2) {
+function tupleEquals(t1: [], t2: []) {
   if (t1.length !== t2.length) {
     return false
   }
@@ -203,13 +203,13 @@ function tupleEquals(t1, t2) {
   return true;
 }
 
-function toFieldDescription(fields) {
+function toFieldDescription(fields: any[]) {
   return fields.length === 1
     ? toSingleFieldDescription(fields[0])
     : `composite (${fields.map(f => toSingleFieldDescription(f)).join(', ')})`
 }
 
-function toSingleFieldDescription(field) {
+function toSingleFieldDescription(field: any) {
   return `'${field.parentProperty}'`
 }
 

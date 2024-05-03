@@ -11,5 +11,10 @@
   "license": "MIT",
   "dependencies": {
     "jsonpath-plus": "^8.1.0"
+  },
+  "devDependencies": {
+    "@types/jsonpath-plus": "^5.0.5",
+    "@types/node": "^20.12.8",
+    "typescript": "^5.4.5"
   }
 }
