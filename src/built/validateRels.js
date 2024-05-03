@@ -12,6 +12,9 @@ var __assign = (this && this.__assign) || function () {
 import { createRequire as _createRequire } from "module";
 var __require = _createRequire(import.meta.url);
 var jp = __require("jsonpath-plus");
+function query(obj, query) {
+    return jp.JSONPath({ path: query, resultType: 'all', json: obj });
+}
 function validateRels(objToValidate, relationsSpec) {
     var relations = relationsSpec.relations;
     var relationIds = Object.keys(relations);
@@ -26,14 +29,14 @@ function validateRels(objToValidate, relationsSpec) {
 function validateKeyRef(id, objToValidate, refRelation, keyRelation) {
     var refSelector = refRelation.selector, refField = refRelation.field;
     var keySelector = keyRelation.selector, keyField = keyRelation.field;
-    var refNodes = jp.JSONPath({ path: refSelector, resultType: 'all', json: objToValidate });
+    var refNodes = query(objToValidate, refSelector);
     var refNodesWithFields = refNodes.map(function (node) {
-        return __assign(__assign({}, node), { fieldNodes: jp.JSONPath({ path: refField, resultType: 'all', json: node.value }) });
+        return __assign(__assign({}, node), { fieldNodes: query(node.value, refField) });
     });
     var refNodesWithUniqueField = refNodesWithFields.filter(function (f) { return f.fieldNodes.length > 0; });
-    var keyNodes = jp.JSONPath({ path: keySelector, resultType: 'all', json: objToValidate });
+    var keyNodes = query(objToValidate, keySelector);
     var keyNodesWithFields = keyNodes.map(function (node) {
-        return __assign(__assign({}, node), { fieldNodes: jp.JSONPath({ path: keyField, resultType: 'all', json: node.value }) });
+        return __assign(__assign({}, node), { fieldNodes: query(node.value, keyField) });
     });
     var keyNodesWithUniqueField = keyNodesWithFields.filter(function (f) { return f.fieldNodes.length > 0; });
     var keys = new Set(keyNodesWithUniqueField.map(function (n) { return n.fieldNodes[0].value; }));
@@ -53,21 +56,21 @@ function validateKeyRef(id, objToValidate, refRelation, keyRelation) {
 function validateUnique(id, objToValidate, relation) {
     var _a;
     var scope = (_a = relation.scope) !== null && _a !== void 0 ? _a : "$.";
-    var scopes = jp.JSONPath({ path: scope, resultType: 'all', json: objToValidate });
+    var scopes = query(objToValidate, scope);
     var diagnostics = scopes.flatMap(function (scope) { return validateUniqueScope(id, scope, relation, "unique"); });
     return diagnostics;
 }
 function validateUniqueScope(id, scope, relation, keyword) {
     var selector = relation.selector;
     var fields = typeof relation.field === 'string' ? [relation.field] : relation.field;
-    var selectedNodes = jp.JSONPath({ path: selector, resultType: 'all', json: scope.value });
+    var selectedNodes = query(scope.value, selector);
     var nodesWithFields = selectedNodes.map(function (node) {
-        return __assign(__assign({}, node), { fieldNodes: invertNestedArray(fields.map(function (field) { return jp.JSONPath({ path: field, resultType: 'all', json: node.value }); })) });
+        return __assign(__assign({}, node), { fieldNodes: invertNestedArray(fields.map(function (field) { return query(node.value, field); })) });
     });
     var nodesWithUniqueField = nodesWithFields.filter(function (f) { return f.fieldNodes.length > 0; });
     // when there is no value, the key is assumed to be a property name
     var groups = groupByArray(nodesWithUniqueField, function (f) { return f.fieldNodes[0].length === 1 && !f.fieldNodes[0][0].value
-        ? f.parentProperty
+        ? [f.parentProperty]
         : f.fieldNodes[0].map(function (f) { return f.value; }); }, tupleEquals);
     var duplicateGroups = groups.filter(function (_a) {
         var values = _a.values;
@@ -110,15 +113,15 @@ function validateUniqueScope(id, scope, relation, keyword) {
 function validateKey(id, objToValidate, relation) {
     var _a;
     var scope = (_a = relation.scope) !== null && _a !== void 0 ? _a : "$.";
-    var scopes = jp.JSONPath({ path: scope, resultType: 'all', json: objToValidate });
+    var scopes = query(objToValidate, scope);
     var diagnostics = scopes.flatMap(function (scope) { return validateKeyScope(id, scope, relation); });
     return diagnostics;
 }
 function validateKeyScope(id, scope, relation) {
     var selector = relation.selector, field = relation.field;
-    var selectedNodes = jp.JSONPath({ path: selector, resultType: 'all', json: scope.value });
+    var selectedNodes = query(scope.value, selector);
     var selectedFields = selectedNodes.map(function (node) {
-        return __assign(__assign({}, node), { fieldNodes: jp.JSONPath({ path: field, resultType: 'all', json: node.value }) });
+        return __assign(__assign({}, node), { fieldNodes: query(node.value, field) });
     });
     var fieldsWithoutKey = selectedFields.filter(function (f) { return f.fieldNodes.length == 0; });
     var missingKeyDiagnostics = fieldsWithoutKey.map(function (node) {
@@ -153,7 +156,7 @@ function groupByArray(xs, getKey, keyEquals) {
 }
 function invertNestedArray(arr) {
     var maxInnerLength = arr.reduce(function (max, innerArr) { return Math.max(max, innerArr.length); }, 0);
-    var result = new Array(maxInnerLength).fill(null).map(function () { return []; });
+    var result = new Array(maxInnerLength).fill(null).map(function () { return new Array(); });
     arr.forEach(function (innerArr, outerIndex) {
         innerArr.forEach(function (element, index) {
             result[index][outerIndex] = element;
