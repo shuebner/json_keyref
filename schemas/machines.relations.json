@@ -21,8 +21,8 @@
         "field": "$.byteOffset"
       }
     },
-    "dataBlockUniqueness": {
-      "unique": {
+    "dataBlockKey": {
+      "key": {
         "scope": "$.*.plc_configuration.blockSequence",
         "selector": "$.*",
         "field": [

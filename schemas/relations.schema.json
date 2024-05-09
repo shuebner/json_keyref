@@ -41,7 +41,16 @@
               "type": "string"
             },
             "field": {
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "array",
+                  "items": "string",
+                  "minItems": 1
+                }
+              ]
             }
           },
           "required": [

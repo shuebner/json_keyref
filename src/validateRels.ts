@@ -189,9 +189,10 @@ function getKeyDiagnostics(contexts: Context[], constraint: IdentityConstraint):
       const missingFieldPointers = missingFields.map(x => jp.JSONPath.toPointer(jp.JSONPath.toPathArray(x.fieldSelector)))
       // remove the leading '/'
       const missingFieldRelativePointers = missingFieldPointers.map(p => p.substring(1))
+      const missingFieldDescription = missingFieldRelativePointers.map(p => `'${p}'`).join(", ")
       const message = missingFieldRelativePointers.length === 1
-        ? `property '${missingFieldRelativePointers[0]}' is required`
-        : `properties '${missingFieldPointers}' are required`
+        ? `property ${missingFieldDescription} is required`
+        : `properties ${missingFieldDescription} are required`
 
       return {
         instancePath: node.contextNode.pointer + node.targetNode.pointer,

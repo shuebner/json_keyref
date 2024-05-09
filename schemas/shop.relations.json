@@ -25,14 +25,14 @@
     "orderToCustomerId": {
       "keyRef": {
         "refer": "customerIdKey",
-        "selector": "$.orders[:]",
+        "selector": "$.orders.*",
         "field": "$.customer"
       }
     },
     "orderToProductId": {
       "keyRef": {
         "refer": "productIdKey",
-        "selector": "$.orders[:]",
+        "selector": "$.orders.*",
         "field": "$.product"
       }
     }

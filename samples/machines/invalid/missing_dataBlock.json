@@ -22,21 +22,9 @@
           {
             "accessType": "Read",
             "blockType": "DB",
-            "dbNumber": 512,
-            "offset": 60,
             "itemType": "Byte",
             "itemAmount": 10,
             "waitTimeMs": 0,
-            "varDefinitions": {}
-          },
-          {
-            "accessType": "Read",
-            "blockType": "DB",
-            "dbNumber": 512,
-            "offset": 60,
-            "itemType": "Byte",
-            "itemAmount": 160,
-            "waitTimeMs": 10,
             "varDefinitions": {}
           }
         ]
@@ -47,15 +35,14 @@
   ],
   "expectedErrors": [
     {
-      "instancePath": "/0/plc_configuration/blockSequence",
+      "instancePath": "/0/plc_configuration/blockSequence/0",
       "keyword": "key",
-      "message": "duplicate composite ('dbNumber', 'offset') (512, 60), composite ('dbNumber', 'offset') must be unique",
+      "message": "properties 'dbNumber', 'offset' are required",
       "params": {
         "relationId": "dataBlockKey",
-        "duplicateValue": [512, 60],
-        "duplicates": [
-          "/0/plc_configuration/blockSequence/0",
-          "/0/plc_configuration/blockSequence/1"
+        "missingProperties": [
+          "/dbNumber",
+          "/offset"
         ]
       }
     }
