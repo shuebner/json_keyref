@@ -33,7 +33,7 @@ type KeyRefDiagnostic = DiagnosticBase & {
 
 type MissingKeyDiagnostic = DiagnosticBase & {
   params: {
-    missingProperty: string
+    missingProperties: string[]
   }
 }
 
@@ -48,119 +48,214 @@ function query(obj: any, query: string): JSONPathQueryResult[] {
   return jp.JSONPath({ path: query, resultType: 'all', json: obj })
 }
 
+type QualifiedNode = JSONPathQueryResult & { keySequenceNodes: JSONPathQueryResult[] }
+type NodeInfo = {
+  contextNode: JSONPathQueryResult,
+  targetNode: JSONPathQueryResult,
+  qualifiedNode: QualifiedNode | null,
+  keySequenceNodes: (JSONPathQueryResult | null)[]
+}
+
+type QualifiedNodeInfo = {
+  contextNode: JSONPathQueryResult,
+  targetNode: JSONPathQueryResult,
+  qualifiedNode: QualifiedNode
+  keySequenceNodes: JSONPathQueryResult[]
+}
+
+type IdentityConstraint = {
+  id: string,
+  contextNodeSelector: string,
+  selector: string,
+  fieldSelectors: string[]
+}
+
 function validateRels(objToValidate: object, relationsSpec: any): Diagnostic[] {
   const { relations } = relationsSpec
   const relationIds = Object.keys(relations)
-  const keyIds = relationIds.filter(id => relations[id].key)
   const uniqueIds = relationIds.filter(id => relations[id].unique)
+  const keyIds = relationIds.filter(id => relations[id].key)
   const keyrefIds = relationIds.filter(id => relations[id].keyRef)
 
-  const keyDiagnostics = keyIds.flatMap(id => validateKey(id, objToValidate, relations[id].key))
-  const uniqueDiagnostics = uniqueIds.flatMap(id => validateUnique(id, objToValidate, relations[id].unique))
-  const keyrefDiagnostics = keyrefIds.flatMap(id => validateKeyRef(id, objToValidate, relations[id].keyRef, relations[relations[id].keyRef.refer].key))
+  const uniqueContextInfos = uniqueIds.map(id => {
+    const constraint = getIdentityConstraint(id, relations[id])
+    return {
+      id: id,
+      constraint: constraint,
+      contexts: collectContexts(objToValidate, constraint)
+    }
+  });
+  const uniqueDiagnostics = uniqueContextInfos.flatMap(i => validateUniqueContexts(i.contexts, i.constraint))
+
+  const keyContextInfos = keyIds.map(id => {
+    const constraint = getIdentityConstraint(id, relations[id])
+    return {
+      id: id,
+      constraint: constraint,
+      contexts: collectContexts(objToValidate, constraint)
+    }
+  });
+  const keyDiagnostics = keyContextInfos.flatMap(i => getKeyDiagnostics(i.contexts, i.constraint))
+
+  const qualifiedReferNodesById = new Map(uniqueContextInfos.concat(keyContextInfos)
+    .map(ci => [ci.id, ci.contexts.flatMap(c => c.nodes.filter(isQualified))]))
+  const keyRefContextInfos = keyrefIds.map(id => {
+      const constraint = getIdentityConstraint(id, relations[id])
+      return {
+        id: id,
+        constraint: constraint,
+        contexts: collectContexts(objToValidate, constraint)
+      }
+    });
+  const keyrefDiagnostics = keyRefContextInfos.flatMap(i => validateKeyrefContexts(i.contexts, qualifiedReferNodesById.get(relations[i.id].keyRef.refer)!, i.constraint))
 
   return (<Diagnostic[]>keyDiagnostics).concat(uniqueDiagnostics).concat(keyrefDiagnostics)
 }
 
-function validateKeyRef(id: string, objToValidate: any, refRelation: any, keyRelation: any): KeyRefDiagnostic[] {
-  const { selector: refSelector, field: refField } = refRelation
-  const { selector: keySelector, field: keyField } = keyRelation
-  const refNodes = query(objToValidate, refSelector)
-  const refNodesWithFields = refNodes.map(node => {
+function getIdentityConstraint(id: string, relation: any): IdentityConstraint {
+  if (relation.key) {
     return {
-      ...node,
-      fieldNodes: query(node.value, refField)
+      id: id,
+      contextNodeSelector: relation.key.scope ?? "$.",
+      selector: relation.key.selector,
+      fieldSelectors: typeof relation.key.field === 'string' ? [relation.key.field] : relation.key.field
     }
-  })
-  const refNodesWithUniqueField = refNodesWithFields.filter(f => f.fieldNodes.length > 0)
+  }
 
-  const keyNodes = query(objToValidate, keySelector)
-  const keyNodesWithFields = keyNodes.map(node => {
+  if (relation.unique) {
     return {
-      ...node,
-      fieldNodes: query(node.value, keyField)
+      id: id,
+      contextNodeSelector: relation.unique.scope ?? "$.",
+      selector: relation.unique.selector,
+      fieldSelectors: typeof relation.unique.field === 'string' ? [relation.unique.field] : relation.unique.field
     }
-  })
-  const keyNodesWithUniqueField = keyNodesWithFields.filter(f => f.fieldNodes.length > 0)
-  const keys = new Set(keyNodesWithUniqueField.map(n => n.fieldNodes[0].value))
+  }
 
-  const invalidRefNodes = refNodesWithUniqueField.filter(n => !keys.has(n.fieldNodes[0].value))
+  if (relation.keyRef) {
+    return {
+      id: id,
+      contextNodeSelector: relation.keyRef.scope ?? "$.",
+      selector: relation.keyRef.selector,
+      fieldSelectors: typeof relation.keyRef.field === 'string' ? [relation.keyRef.field] : relation.keyRef.field
+    }
+  }
+
+  throw new Error(`unknown relation ${id}: ${relation}`)
+}
+
+function validateKeyrefContexts(contexts: Context[], referNodes: QualifiedNodeInfo[], constraint: IdentityConstraint): KeyRefDiagnostic[] {
+  return contexts.flatMap(({ nodes }) => validateKeyRef(constraint, referNodes, nodes.filter(isQualified)))
+}
+
+function validateKeyRef(constraint: IdentityConstraint, referNodes: QualifiedNodeInfo[], keyrefNodes: QualifiedNodeInfo[]): KeyRefDiagnostic[] {
+  // use a separator that guarantees that different key sequences end up as different strings
+  const separator = "°#@"
+  const toKeySequenceId: (ks: JSONPathQueryResult[]) => string = ks => ks.map(k => k.value).join(separator)
+  const keySequenceIds = new Set(referNodes.map(n => toKeySequenceId(n.keySequenceNodes)))
+
+  const invalidRefNodes = keyrefNodes.filter(n => !keySequenceIds.has(toKeySequenceId(n.keySequenceNodes)))
 
   return invalidRefNodes.map(n => {
     return {
-      instancePath: n.pointer,
+      instancePath: n.contextNode.pointer + n.targetNode.pointer,
       keyword: "keyRef",
-      message: `invalid keyRef '${n.fieldNodes[0].value}'`,
+      message: `invalid keyRef '${n.keySequenceNodes.map(k => k.value)}'`,
       params: {
-        relationId: id,
-        invalidRef: n.fieldNodes[0].value
+        relationId: constraint.id,
+        invalidRef: n.keySequenceNodes.length === 1 ? n.keySequenceNodes[0].value : n.keySequenceNodes.map(n => n.value)
       }
     }
   })
 }
 
-function validateUnique(id: string, objToValidate: object, relation: any) {
-  const scope = relation.scope ?? "$."
+function validateUniqueContexts(contexts: Context[], constraint: IdentityConstraint) : DuplicateKeyDiagnostic[] {
+  return contexts.flatMap(({ nodes }) => validateUnique(nodes, constraint))
+}
 
-  const scopes = query(objToValidate, scope)
-
-  const diagnostics = scopes.flatMap(scope => validateUniqueScope(id, scope, relation, "unique"))
+function validateUnique(nodes: NodeInfo[], constraint: IdentityConstraint): DuplicateKeyDiagnostic[] {
+  const qualifiedNodes = nodes.filter(isQualified)
+  const diagnostics = getUniqueDiagnostics(qualifiedNodes, constraint, "unique")
 
   return diagnostics
 }
 
-function validateUniqueScope(id: string, scope: JSONPathQueryResult, relation: any, keyword: string): DuplicateKeyDiagnostic[] {
-  const selector = relation.selector
-  const fields: string[] = typeof relation.field === 'string' ? [relation.field] : relation.field
-  const selectedNodes = query(scope.value, selector)
-  const nodesWithFields = selectedNodes.map(node => {
-    return {
-      ...node,
-      fieldNodes: invertNestedArray(fields.map(field => query(node.value, field)))
-    }
-  })
+function getKeyDiagnostics(contexts: Context[], constraint: IdentityConstraint): KeyDiagnostic[] {
+  return contexts.flatMap(({ contextNode, nodes }) => {
+    const unqualifiedNodes = nodes.filter(n => !isQualified(n))
+    const missingKeyDiagnostics: MissingKeyDiagnostic[] = unqualifiedNodes.map(node => {
+      const missingFields = node.keySequenceNodes
+        .map((n, index) => ({ field: n, fieldSelector: constraint.fieldSelectors[index] }))
+        .filter(x => !x.field)
+      const missingFieldPointers = missingFields.map(x => jp.JSONPath.toPointer(jp.JSONPath.toPathArray(x.fieldSelector)))
+      // remove the leading '/'
+      const missingFieldRelativePointers = missingFieldPointers.map(p => p.substring(1))
+      const message = missingFieldRelativePointers.length === 1
+        ? `property '${missingFieldRelativePointers[0]}' is required`
+        : `properties '${missingFieldPointers}' are required`
 
-  const nodesWithUniqueField = nodesWithFields.filter(f => f.fieldNodes.length > 0)
+      return {
+        instancePath: node.contextNode.pointer + node.targetNode.pointer,
+        keyword: "key",
+        message: message,
+        params: {
+          relationId: constraint.id,
+          missingProperties: missingFieldPointers
+        }
+      }
+    })
+
+    const qualifiedNodes = nodes.filter(isQualified)
+    const uniqueDiagnostics = getUniqueDiagnostics(qualifiedNodes, constraint, "key")
+
+    return (<KeyDiagnostic[]>missingKeyDiagnostics).concat(uniqueDiagnostics)
+  })
+}
+
+function isQualified(node: NodeInfo): node is QualifiedNodeInfo {
+  return !!node.qualifiedNode && node.keySequenceNodes.every(k => k)
+}
+
+function getUniqueDiagnostics(nodes: QualifiedNodeInfo[], constraint: IdentityConstraint, keyword: string): DuplicateKeyDiagnostic[] {
   // when there is no value, the key is assumed to be a property name
   const groups = groupByArray(
-    nodesWithUniqueField,
-    f => f.fieldNodes[0].length === 1 && !f.fieldNodes[0][0].value
-      ? [f.parentProperty]
-      : f.fieldNodes[0].map(f => f.value),
+    nodes,
+    n => n.keySequenceNodes.map(k => !k.parentProperty
+      ? n.targetNode.parentProperty
+      : k.value),
     tupleEquals)
 
   const duplicateGroups = groups.filter(({ values }) => values.length > 1)
 
   const duplicateDiagnostics = duplicateGroups.map(({ key, values: nodes }) => {
     const node = nodes[0]
-    const fields = node.fieldNodes[0]
+    const fields = node.keySequenceNodes
     let nodeIsPropertyName = false
     let message
     if (fields.length === 1 && fields[0]) {
       const field = fields[0]
-      const pointerSegments = node.pointer.split('/').concat(field.pointer.split('/')).filter(segment => segment)
+      const pointerSegments = node.targetNode.pointer.split('/').concat(field.pointer.split('/')).filter(segment => segment)
       const lastSegment = pointerSegments[pointerSegments.length - 1]
-      nodeIsPropertyName = lastSegment === node.parentProperty
+      nodeIsPropertyName = lastSegment === node.targetNode.parentProperty
       if (nodeIsPropertyName) {
         const parentSegment = pointerSegments[pointerSegments.length - 2]
-        message = `duplicate ${parentSegment} property '${node.parentProperty}', property names in ${parentSegment} must be unique`
+        message = `duplicate ${parentSegment} property '${node.targetNode.parentProperty}', property names in ${parentSegment} must be unique`
       }
     }
 
     if (!message) {
-      const fieldDescription = toFieldDescription(fields)
+      const fieldDescription = toFieldDescription(node.keySequenceNodes)
       const keyDescription = toValueDescription(key)
       message = `duplicate ${fieldDescription} ${keyDescription}, ${fieldDescription} must be unique`
     }
 
     return {
-      instancePath: scope.pointer,
+      instancePath: node.contextNode.pointer,
       keyword: keyword,
       message: message,
       params: {
-        relationId: id,
+        relationId: constraint.id,
         duplicateValue: key.length === 1 ? key[0] : key,
-        duplicates: nodes.map(n => scope.pointer + n.pointer)
+        duplicates: nodes.map(n => n.contextNode.pointer + n.targetNode.pointer)
       }
     }
   })
@@ -168,48 +263,54 @@ function validateUniqueScope(id: string, scope: JSONPathQueryResult, relation: a
   return duplicateDiagnostics
 }
 
-function validateKey(id: string, objToValidate: any, relation: any) {
-  const scope = relation.scope ?? "$."
-
-  const scopes = query(objToValidate, scope)
-
-  const diagnostics = scopes.flatMap(scope => validateKeyScope(id, scope, relation))
-
-  return diagnostics
+type Context = {
+  contextNode: JSONPathQueryResult,
+  nodes: NodeInfo[]
 }
 
-function validateKeyScope(id: string, scope: JSONPathQueryResult, relation: any): KeyDiagnostic[] {
-  const { selector, field } = relation
-  const selectedNodes = query(scope.value, selector)
-  const selectedFields = selectedNodes.map(node => {
-    return {
-      ...node,
-      fieldNodes: query(node.value, field)
-    }
-  })
+function collectContexts(obj: any, constraint: IdentityConstraint): Context[] {
+  const contextNodes = query(obj, constraint.contextNodeSelector)
+  const nodeInfos = contextNodes
+    .map(contextNode => {
+      const targetNodes = query(contextNode.value, constraint.selector)
+      return {
+        contextNode: contextNode,
+        nodes: targetNodes.map(t => {
+          const keySequenceNodes = constraint.fieldSelectors.map(s => queryField(t.value, s))
+          const maybeQualifiedNode = keySequenceNodes.every(f => f)
+            ? {
+              ...t,
+              keySequenceNodes: keySequenceNodes.filter((f): f is Exclude<typeof f, null> => f !== null)
+            }
+            : null
 
-  const fieldsWithoutKey = selectedFields.filter(f => f.fieldNodes.length == 0)
-  const missingKeyDiagnostics: MissingKeyDiagnostic[] = fieldsWithoutKey.map(node => {
-    const missingFieldPointer = jp.JSONPath.toPointer(jp.JSONPath.toPathArray(field))
-    // remove the leading '/'
-    const missingFieldRelativePointer = missingFieldPointer.substring(1)
-
-    return {
-      instancePath: scope.pointer + node.pointer,
-      keyword: "key",
-      message: `property '${missingFieldRelativePointer}' is required`,
-      params: {
-        relationId: id,
-        missingProperty: missingFieldPointer
+          return {
+            contextNode: contextNode,
+            targetNode: t,
+            qualifiedNode: maybeQualifiedNode,
+            keySequenceNodes: keySequenceNodes
+          }
+        })
       }
-    }
-  })
+    })
 
-  const duplicateKeyDiagnostics = validateUniqueScope(id, scope, relation, "key")
-
-  return (<KeyDiagnostic[]>missingKeyDiagnostics).concat(duplicateKeyDiagnostics)
+  return nodeInfos
 }
 
+function queryField(obj: any, fieldSelector: string): JSONPathQueryResult | null {
+  const results: JSONPathQueryResult[] = jp.JSONPath({ path: fieldSelector, resultType: 'all', json: obj })
+
+  if (results.length > 1) {
+    // see https://www.w3.org/TR/xmlschema-1/#cIdentity-constraint_Definitions
+    throw new Error(`A field selector must identify a single node. "${fieldSelector}" identified ${results.map(r => r.pointer).join(", ")}.`)
+  }
+
+  if (results.length === 1) {
+    return results[0]
+  }
+
+  return null;
+}
 
 function groupByArray<TValue, TKey>(xs: TValue[], getKey: (o: TValue) => TKey, keyEquals: (one: TKey, other: TKey) => boolean): { key: TKey, values: TValue[] }[] {
   return xs.reduce<{ key: TKey, values: TValue[] }[]>(
@@ -224,19 +325,6 @@ function groupByArray<TValue, TKey>(xs: TValue[], getKey: (o: TValue) => TKey, k
       return rv;
     },
     []);
-}
-
-function invertNestedArray<T>(arr: T[][]): (T | undefined)[][] {
-  const maxInnerLength = arr.reduce((max, innerArr) => Math.max(max, innerArr.length), 0);
-  const result = new Array(maxInnerLength).fill(null).map(() => new Array<T>());
-
-  arr.forEach((innerArr, outerIndex) => {
-    innerArr.forEach((element, index) => {
-      result[index][outerIndex] = element;
-    });
-  });
-
-  return result;
 }
 
 function tupleEquals(t1: any[], t2: any[]) {

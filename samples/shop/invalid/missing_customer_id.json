@@ -22,7 +22,9 @@
       "message": "property 'id' is required",
       "params": {
         "relationId": "customerIdKey",
-        "missingProperty": "/id"
+        "missingProperties": [
+          "/id"
+        ]
       }
     }
   ]
