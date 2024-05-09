@@ -37,6 +37,20 @@
         "selector": "$.*.interpreter_configuration..[?(@.variableName && @.variableName != 'system_plc-is-connected-status')]",
         "field": "$.variableName"
       }
+    },
+    "localizationKey": {
+      "key": {
+        "scope": "$.*",
+        "selector": "$.text_configuration.localizations.*",
+        "field": "$.~"
+      }
+    },
+    "interpreterLocalizationRef": {
+      "keyRef": {
+        "refer": "localizationKey",
+        "selector": "$.*.interpreter_configuration..[?(@.number)]",
+        "field": "$.number"
+      }
     }
   }
 }
