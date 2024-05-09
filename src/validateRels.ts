@@ -53,14 +53,20 @@ type NodeInfo = {
   contextNode: JSONPathQueryResult,
   targetNode: JSONPathQueryResult,
   qualifiedNode: QualifiedNode | null,
-  keySequenceNodes: (JSONPathQueryResult | null)[]
+  keySequence: {
+    nodes: (JSONPathQueryResult | null)[],
+    evaluated: (Primitive | null)[]
+  }
 }
 
 type QualifiedNodeInfo = {
   contextNode: JSONPathQueryResult,
   targetNode: JSONPathQueryResult,
   qualifiedNode: QualifiedNode
-  keySequenceNodes: JSONPathQueryResult[]
+  keySequence: {
+    nodes: JSONPathQueryResult[],
+    evaluated: Primitive[]
+  }
 }
 
 type IdentityConstraint = {
@@ -69,6 +75,8 @@ type IdentityConstraint = {
   selector: string,
   fieldSelectors: string[]
 }
+
+type Primitive = string | number | boolean
 
 function validateRels(objToValidate: object, relationsSpec: any): Diagnostic[] {
   const { relations } = relationsSpec
@@ -150,19 +158,19 @@ function validateKeyrefContexts(contexts: Context[], referNodes: QualifiedNodeIn
 function validateKeyRef(constraint: IdentityConstraint, referNodes: QualifiedNodeInfo[], keyrefNodes: QualifiedNodeInfo[]): KeyRefDiagnostic[] {
   // use a separator that guarantees that different key sequences end up as different strings
   const separator = "°#@"
-  const toKeySequenceId: (ks: JSONPathQueryResult[]) => string = ks => ks.map(k => k.value).join(separator)
-  const keySequenceIds = new Set(referNodes.map(n => toKeySequenceId(n.keySequenceNodes)))
+  const toKeySequenceId: (ks: Primitive[]) => string = ks => ks.join(separator)
+  const keySequenceIds = new Set(referNodes.map(n => toKeySequenceId(n.keySequence.evaluated)))
 
-  const invalidRefNodes = keyrefNodes.filter(n => !keySequenceIds.has(toKeySequenceId(n.keySequenceNodes)))
+  const invalidRefNodes = keyrefNodes.filter(n => !keySequenceIds.has(toKeySequenceId(n.keySequence.evaluated)))
 
   return invalidRefNodes.map(n => {
     return {
       instancePath: n.contextNode.pointer + n.targetNode.pointer,
       keyword: "keyRef",
-      message: `invalid keyRef '${n.keySequenceNodes.map(k => k.value)}'`,
+      message: `invalid keyRef '${n.keySequence.evaluated.join(', ')}'`,
       params: {
         relationId: constraint.id,
-        invalidRef: n.keySequenceNodes.length === 1 ? n.keySequenceNodes[0].value : n.keySequenceNodes.map(n => n.value)
+        invalidRef: n.keySequence.evaluated.length === 1 ? n.keySequence.evaluated[0] : n.keySequence.evaluated
       }
     }
   })
@@ -183,7 +191,7 @@ function getKeyDiagnostics(contexts: Context[], constraint: IdentityConstraint):
   return contexts.flatMap(({ contextNode, nodes }) => {
     const unqualifiedNodes = nodes.filter(n => !isQualified(n))
     const missingKeyDiagnostics: MissingKeyDiagnostic[] = unqualifiedNodes.map(node => {
-      const missingFields = node.keySequenceNodes
+      const missingFields = node.keySequence.nodes
         .map((n, index) => ({ field: n, fieldSelector: constraint.fieldSelectors[index] }))
         .filter(x => !x.field)
       const missingFieldPointers = missingFields.map(x => jp.JSONPath.toPointer(jp.JSONPath.toPathArray(x.fieldSelector)))
@@ -213,23 +221,23 @@ function getKeyDiagnostics(contexts: Context[], constraint: IdentityConstraint):
 }
 
 function isQualified(node: NodeInfo): node is QualifiedNodeInfo {
-  return !!node.qualifiedNode && node.keySequenceNodes.every(k => k)
+  return !!node.qualifiedNode &&
+    node.keySequence.nodes.every(k => k) &&
+    node.keySequence.evaluated.every(v => v !== null)
 }
 
 function getUniqueDiagnostics(nodes: QualifiedNodeInfo[], constraint: IdentityConstraint, keyword: string): DuplicateKeyDiagnostic[] {
   // when there is no value, the key is assumed to be a property name
   const groups = groupByArray(
     nodes,
-    n => n.keySequenceNodes.map(k => !k.parentProperty
-      ? n.targetNode.parentProperty
-      : k.value),
+    n => n.keySequence.evaluated,
     tupleEquals)
 
   const duplicateGroups = groups.filter(({ values }) => values.length > 1)
 
   const duplicateDiagnostics = duplicateGroups.map(({ key, values: nodes }) => {
     const node = nodes[0]
-    const fields = node.keySequenceNodes
+    const fields = node.keySequence.nodes
     let nodeIsPropertyName = false
     let message
     if (fields.length === 1 && fields[0]) {
@@ -244,7 +252,7 @@ function getUniqueDiagnostics(nodes: QualifiedNodeInfo[], constraint: IdentityCo
     }
 
     if (!message) {
-      const fieldDescription = toFieldDescription(node.keySequenceNodes)
+      const fieldDescription = toFieldDescription(node.keySequence.nodes)
       const keyDescription = toValueDescription(key)
       message = `duplicate ${fieldDescription} ${keyDescription}, ${fieldDescription} must be unique`
     }
@@ -289,7 +297,10 @@ function collectContexts(obj: any, constraint: IdentityConstraint): Context[] {
             contextNode: contextNode,
             targetNode: t,
             qualifiedNode: maybeQualifiedNode,
-            keySequenceNodes: keySequenceNodes
+            keySequence: {
+              nodes: keySequenceNodes,
+              evaluated: keySequenceNodes.map(n => n === null ? null : !n.parentProperty ? t.parentProperty : n.value)
+            }
           }
         })
       }

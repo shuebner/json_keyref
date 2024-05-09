@@ -7,6 +7,16 @@
         "field": "$.equipment_number"
       }
     },
+    "dataBlockKey": {
+      "key": {
+        "scope": "$.*.plc_configuration.blockSequence",
+        "selector": "$.*",
+        "field": [
+          "$.dbNumber",
+          "$.offset"
+        ]
+      }
+    },
     "varDefinitionKey": {
       "key": {
         "scope": "$.*",
@@ -21,14 +31,11 @@
         "field": "$.byteOffset"
       }
     },
-    "dataBlockKey": {
-      "key": {
-        "scope": "$.*.plc_configuration.blockSequence",
-        "selector": "$.*",
-        "field": [
-          "$.dbNumber",
-          "$.offset"
-        ]
+    "interpreterVariableRef": {
+      "keyRef": {
+        "refer": "varDefinitionKey",
+        "selector": "$.*.interpreter_configuration.*.*",
+        "field": "$.variableName"
       }
     }
   }
