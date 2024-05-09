@@ -1,0 +1,92 @@
+{
+  "sample": [
+    {
+      "equipment_number": "ma_5001",
+      "created_at": "2022-05-31T06:22:41.453153+00:00",
+      "changed_at": "2022-05-31T06:22:41.453155+00:00",
+      "location_information": {
+        "region": "eu",
+        "country": "de",
+        "plantId": "er",
+        "siteId": "dev",
+        "hallId": "dev",
+        "productionLine": "pl_50"
+      },
+      "plc_configuration": {
+        "ipAddress": "$(Plcs:Plc5001:IpAddress)",
+        "portNumber": "$(Plcs:Plc5001:Port)",
+        "plcType": "S7300",
+        "rackNumber": 0,
+        "slotNumber": 2,
+        "blockSequence": [
+          {
+            "accessType": "Read",
+            "blockType": "DB",
+            "dbNumber": 512,
+            "offset": 60,
+            "itemType": "Byte",
+            "itemAmount": 10,
+            "waitTimeMs": 0,
+            "varDefinitions": {
+              "s000_all-key-switches-in-setup": {
+                "byteOffset": 0,
+                "bitOffset": 0,
+                "amount": 1,
+                "varType": "Boolean"
+              }
+            }
+          }
+        ]
+      },
+      "interpreter_configuration": {
+        "MessageModule": [
+          {
+            "variables": [
+              {
+                "variableName": "s000_machine-status",
+                "defaultNumber": 3,
+                "numberOffset": 10000,
+                "allowedValueRange": "1-5",
+                "outOfRangeReturnValue": 10000
+              },
+              {
+                "variableName": "not_a_variable",
+                "defaultNumber": 0,
+                "numberOffset": 10009
+              }
+            ],
+            "priority": 0,
+            "type": "stop-error",
+            "types": {
+              "10000": "undefined",
+              "10001": "auto-on",
+              "10002": "auto-waiting-interaction-required",
+              "10003": "auto-off",
+              "10004": "disconnected",
+              "10005": "auto-waiting-no-interaction-required",
+              "10006": "auto-off-setup",
+              "10007": "auto-off-stop-initial",
+              "10008": "auto-off-stop-idling",
+              "10009": "stop-emergency",
+              "10010": "auto-off-ecomode"
+            },
+            "stationSequence": 0,
+            "definitionType": "MessageStatusDefinition"
+          }
+        ]
+      },
+      "text_configuration": {}
+    }
+  ],
+  "expectedErrors": [
+    {
+      "instancePath": "/0/interpreter_configuration/MessageModule/0/variables/1",
+      "keyword": "keyRef",
+      "message": "invalid keyRef 'not_a_variable'",
+      "params": {
+        "relationId": "interpreterVariableRef",
+        "invalidRef": "not_a_variable"
+      }
+    }
+  ]
+}

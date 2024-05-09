@@ -34,7 +34,7 @@
     "interpreterVariableRef": {
       "keyRef": {
         "refer": "varDefinitionKey",
-        "selector": "$.*.interpreter_configuration.*.*",
+        "selector": "$.*.interpreter_configuration..[?(@.variableName && @.variableName != 'system_plc-is-connected-status')]",
         "field": "$.variableName"
       }
     }
