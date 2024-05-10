@@ -1,0 +1,15 @@
+{
+  "id": "urn:multifile",
+  "multiFile": {
+    "scope": "./*/",
+    "selector": "./**/*.*"
+  },
+  "relations": {
+    "idKey": {
+      "key": {
+        "selector": "$.*",
+        "field": "$.~"
+      }
+    }
+  }
+}

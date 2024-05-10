@@ -1,4 +1,7 @@
+import { glob } from 'glob'
 import jp = require('jsonpath-plus')
+import fs = require('fs')
+import path from 'path'
 
 type JSONPathQueryResult =
   {
@@ -50,6 +53,7 @@ function query(obj: any, query: string): JSONPathQueryResult[] {
 
 type QualifiedNode = JSONPathQueryResult & { keySequenceNodes: JSONPathQueryResult[] }
 type NodeInfo = {
+  fileContextInfo: FileContextInfo | null,
   contextNode: JSONPathQueryResult,
   targetNode: JSONPathQueryResult,
   qualifiedNode: QualifiedNode | null,
@@ -60,6 +64,7 @@ type NodeInfo = {
 }
 
 type QualifiedNodeInfo = {
+  fileContextInfo: FileContextInfo | null,
   contextNode: JSONPathQueryResult,
   targetNode: JSONPathQueryResult,
   qualifiedNode: QualifiedNode
@@ -78,7 +83,56 @@ type IdentityConstraint = {
 
 type Primitive = string | number | boolean
 
+type RelObject = {
+  fileContextInfo: FileContextInfo | null,
+  value: any
+}
+
+type FileContextInfo = {
+  fileContext: string,
+  name: string,
+}
+
+async function validateMultiFileRels(rootFolder: string, relationsSpec: any): Promise<Diagnostic[]> {
+  const { multiFile: { scope, selector } } = relationsSpec
+
+  let allDiagnostics = new Array<Diagnostic>();
+
+  // do NOT use path.join because glob expects linux-style paths,
+  // independent of the actual file path syntax
+  const fileContextIterator = glob.iterate(scope, { cwd: rootFolder, posix: true })
+  for await (const fileContext of fileContextIterator) {
+    const rootedContextPath = path.posix.join(rootFolder, fileContext)
+
+    const fileNames = await glob.glob(selector, { cwd: rootedContextPath, posix: true })
+    const rootRelativeFileNames = fileNames.map(f => path.posix.join(fileContext, f))
+    const relObjs = new Array<RelObject>()
+    for await (const fileName of rootRelativeFileNames) {
+      const rootedFilePath = path.posix.join(rootFolder, fileName)
+      const content = await fs.promises.readFile(rootedFilePath, { encoding: 'utf-8' })
+      const obj = JSON.parse(content)
+      relObjs.push({
+        fileContextInfo: {
+          fileContext: fileContext,
+          name: fileName,
+        },
+        value: obj
+      })
+    }
+
+    const diagnostics = validateTreeRels(relObjs, relationsSpec)
+    allDiagnostics = allDiagnostics.concat(diagnostics)
+    const e = 3
+  }
+
+  return allDiagnostics
+}
+
 function validateRels(objToValidate: object, relationsSpec: any): Diagnostic[] {
+  return validateTreeRels([{ fileContextInfo: null, value: objToValidate }], relationsSpec);
+}
+
+function validateTreeRels(objs: RelObject[], relationsSpec: any): Diagnostic[] {
   const { relations } = relationsSpec
   const relationIds = Object.keys(relations)
   const uniqueIds = relationIds.filter(id => relations[id].unique)
@@ -90,7 +144,7 @@ function validateRels(objToValidate: object, relationsSpec: any): Diagnostic[] {
     return {
       id: id,
       constraint: constraint,
-      contexts: collectContexts(objToValidate, constraint)
+      contexts: collectContexts(objs, constraint)
     }
   });
   const uniqueDiagnostics = uniqueContextInfos.flatMap(i => validateUniqueContexts(i.contexts, i.constraint))
@@ -100,7 +154,7 @@ function validateRels(objToValidate: object, relationsSpec: any): Diagnostic[] {
     return {
       id: id,
       constraint: constraint,
-      contexts: collectContexts(objToValidate, constraint)
+      contexts: collectContexts(objs, constraint)
     }
   });
   const keyDiagnostics = keyContextInfos.flatMap(i => getKeyDiagnostics(i.contexts, i.constraint))
@@ -108,13 +162,13 @@ function validateRels(objToValidate: object, relationsSpec: any): Diagnostic[] {
   const qualifiedReferNodesById = new Map(uniqueContextInfos.concat(keyContextInfos)
     .map(ci => [ci.id, ci.contexts.flatMap(c => c.nodes.filter(isQualified))]))
   const keyRefContextInfos = keyrefIds.map(id => {
-      const constraint = getIdentityConstraint(id, relations[id])
-      return {
-        id: id,
-        constraint: constraint,
-        contexts: collectContexts(objToValidate, constraint)
-      }
-    });
+    const constraint = getIdentityConstraint(id, relations[id])
+    return {
+      id: id,
+      constraint: constraint,
+      contexts: collectContexts(objs, constraint)
+    }
+  });
   const keyrefDiagnostics = keyRefContextInfos.flatMap(i => validateKeyrefContexts(i.contexts, qualifiedReferNodesById.get(relations[i.id].keyRef.refer)!, i.constraint))
 
   return (<Diagnostic[]>keyDiagnostics).concat(uniqueDiagnostics).concat(keyrefDiagnostics)
@@ -176,7 +230,7 @@ function validateKeyRef(constraint: IdentityConstraint, referNodes: QualifiedNod
   })
 }
 
-function validateUniqueContexts(contexts: Context[], constraint: IdentityConstraint) : DuplicateKeyDiagnostic[] {
+function validateUniqueContexts(contexts: Context[], constraint: IdentityConstraint): DuplicateKeyDiagnostic[] {
   return contexts.flatMap(({ nodes }) => validateUnique(nodes, constraint))
 }
 
@@ -188,7 +242,7 @@ function validateUnique(nodes: NodeInfo[], constraint: IdentityConstraint): Dupl
 }
 
 function getKeyDiagnostics(contexts: Context[], constraint: IdentityConstraint): KeyDiagnostic[] {
-  return contexts.flatMap(({ contextNode, nodes }) => {
+  return contexts.flatMap(({ nodes }) => {
     const unqualifiedNodes = nodes.filter(n => !isQualified(n))
     const missingKeyDiagnostics: MissingKeyDiagnostic[] = unqualifiedNodes.map(node => {
       const missingFields = node.keySequence.nodes
@@ -247,7 +301,8 @@ function getUniqueDiagnostics(nodes: QualifiedNodeInfo[], constraint: IdentityCo
       nodeIsPropertyName = lastSegment === node.targetNode.parentProperty
       if (nodeIsPropertyName) {
         const parentSegment = pointerSegments[pointerSegments.length - 2]
-        message = `duplicate ${parentSegment} property '${node.targetNode.parentProperty}', property names in ${parentSegment} must be unique`
+        const parentDescription = parentSegment ?? '<root>'
+        message = `duplicate ${parentDescription} property '${node.targetNode.parentProperty}', property names in ${parentDescription} must be unique`
       }
     }
 
@@ -258,13 +313,14 @@ function getUniqueDiagnostics(nodes: QualifiedNodeInfo[], constraint: IdentityCo
     }
 
     return {
+      fileContext: node.fileContextInfo?.fileContext,
       instancePath: node.contextNode.pointer,
       keyword: keyword,
       message: message,
       params: {
         relationId: constraint.id,
         duplicateValue: key.length === 1 ? key[0] : key,
-        duplicates: nodes.map(n => n.contextNode.pointer + n.targetNode.pointer)
+        duplicates: nodes.map(n => (n.fileContextInfo ? `${n.fileContextInfo.name}#` : '') + n.contextNode.pointer + n.targetNode.pointer)
       }
     }
   })
@@ -273,40 +329,58 @@ function getUniqueDiagnostics(nodes: QualifiedNodeInfo[], constraint: IdentityCo
 }
 
 type Context = {
-  contextNode: JSONPathQueryResult,
+  path: string,
   nodes: NodeInfo[]
 }
 
-function collectContexts(obj: any, constraint: IdentityConstraint): Context[] {
-  const contextNodes = query(obj, constraint.contextNodeSelector)
-  const nodeInfos = contextNodes
-    .map(contextNode => {
-      const targetNodes = query(contextNode.value, constraint.selector)
-      return {
-        contextNode: contextNode,
-        nodes: targetNodes.map(t => {
-          const keySequenceNodes = constraint.fieldSelectors.map(s => queryField(t.value, s))
-          const maybeQualifiedNode = keySequenceNodes.every(f => f)
-            ? {
-              ...t,
-              keySequenceNodes: keySequenceNodes.filter((f): f is Exclude<typeof f, null> => f !== null)
-            }
-            : null
+function collectContexts(objs: RelObject[], constraint: IdentityConstraint): Context[] {
+  const objcontextNodes = objs.map(o => ({ obj: o, contextNodes: query(o.value, constraint.contextNodeSelector) }))
+  const contextNodesByPath = objcontextNodes.reduce((map, nodes) => {
+    for (const node of nodes.contextNodes) {
+      let nodesForPointer = map.get(node.pointer)
+      if (!nodesForPointer) {
+        const newNodes = new Array<{ source: RelObject, queryResult: JSONPathQueryResult }>()
+        map.set(node.pointer, newNodes)
+        nodesForPointer = newNodes
+      }
 
-          return {
-            contextNode: contextNode,
-            targetNode: t,
-            qualifiedNode: maybeQualifiedNode,
-            keySequence: {
-              nodes: keySequenceNodes,
-              evaluated: keySequenceNodes.map(n => n === null ? null : !n.parentProperty ? t.parentProperty : n.value)
+      nodesForPointer.push({ source: nodes.obj, queryResult: node })
+    }
+
+    return map
+  }, new Map<string, { source: RelObject, queryResult: JSONPathQueryResult }[]>())
+
+  const contexts = Array.from(contextNodesByPath)
+    .map(([path, contextNodes]) => {
+      const targetNodes = contextNodes.flatMap(cn => ({ contextNode: cn, targetNodes: query(cn.queryResult.value, constraint.selector) }))
+      return {
+        path: path,
+        nodes: targetNodes.flatMap(tn => {
+          return tn.targetNodes.map(t => {
+            const keySequenceNodes = constraint.fieldSelectors.map(s => queryField(t.value, s))
+            const maybeQualifiedNode = keySequenceNodes.every(f => f)
+              ? {
+                ...t,
+                keySequenceNodes: keySequenceNodes.filter((f): f is Exclude<typeof f, null> => f !== null)
+              }
+              : null
+
+            return {
+              fileContextInfo: tn.contextNode.source.fileContextInfo,
+              contextNode: tn.contextNode.queryResult,
+              targetNode: t,
+              qualifiedNode: maybeQualifiedNode,
+              keySequence: {
+                nodes: keySequenceNodes,
+                evaluated: keySequenceNodes.map(n => n === null ? null : !n.parentProperty ? t.parentProperty : n.value)
+              }
             }
-          }
+          })
         })
       }
     })
 
-  return nodeInfos
+  return contexts
 }
 
 function queryField(obj: any, fieldSelector: string): JSONPathQueryResult | null {
@@ -375,4 +449,4 @@ function toSingleValueDescription(value: any[]) {
     : value
 }
 
-module.exports = validateRels
+module.exports = { validateMultiFileRels, validateRels }

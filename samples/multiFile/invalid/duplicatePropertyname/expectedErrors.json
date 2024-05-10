@@ -1,0 +1,16 @@
+[
+  {
+    "fileContext": "tenant1",
+    "instancePath": "",
+    "keyword": "key",
+    "message": "duplicate <root> property 'thing1', property names in <root> must be unique",
+    "params": {
+      "relationId": "idKey",
+      "duplicateValue": "thing1",
+      "duplicates": [
+        "tenant1/file2.json#/thing1",
+        "tenant1/anothersubfolder/file1.json#/thing1"
+      ]
+    }
+  }
+]

@@ -3,7 +3,7 @@ const addFormats = require('ajv-formats')
 const glob = require("glob")
 const fs = require('fs')
 
-const validateRels = require('../src/validateRels')
+const { validateRels } = require('../src/validateRels')
 
 const schemaBaseFolder = "../schemas"
 const schema = glob.sync(`${schemaBaseFolder}/shop.schema.json`)

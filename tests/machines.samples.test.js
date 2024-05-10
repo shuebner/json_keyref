@@ -1,7 +1,7 @@
 const glob = require("glob")
 const fs = require('fs')
 
-const validateRels = require('../src/validateRels')
+const { validateRels } = require('../src/validateRels')
 
 const schemaBaseFolder = "../schemas"
 
