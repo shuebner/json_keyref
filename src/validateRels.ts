@@ -1,7 +1,7 @@
 import { glob } from 'glob'
-import jp = require('jsonpath-plus')
-import fs = require('fs')
-import path from 'path'
+import * as jp from 'jsonpath-plus'
+import * as fs from 'fs'
+import * as path from 'path'
 
 type JSONPathQueryResult =
   {
@@ -93,7 +93,7 @@ type FileContextInfo = {
   name: string,
 }
 
-async function validateMultiFileRels(rootFolder: string, relationsSpec: any): Promise<Diagnostic[]> {
+export async function validateMultiFileRels(rootFolder: string, relationsSpec: any): Promise<Diagnostic[]> {
   const { multiFile: { scope, selector } } = relationsSpec
 
   let allDiagnostics = new Array<Diagnostic>();
@@ -128,7 +128,7 @@ async function validateMultiFileRels(rootFolder: string, relationsSpec: any): Pr
   return allDiagnostics
 }
 
-function validateRels(objToValidate: object, relationsSpec: any): Diagnostic[] {
+export function validateRels(objToValidate: object, relationsSpec: any): Diagnostic[] {
   return validateTreeRels([{ fileContextInfo: null, value: objToValidate }], relationsSpec);
 }
 
@@ -448,5 +448,3 @@ function toSingleValueDescription(value: any[]) {
     ? `'${value}'`
     : value
 }
-
-module.exports = { validateMultiFileRels, validateRels }
