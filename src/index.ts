@@ -10,20 +10,18 @@ try {
   program
     .requiredOption('-r, --root <directory>', 'The root directory for relative paths and globs')
     .requiredOption('-s, --settings <file>', 'The JSON relations definition file')
-    .requiredOption('-o, --out-errors <file>', 'The validation error output file')
 
   program.parse();
   const options = program.opts();
 
   const settingsFilePath = <string>(options.settings)
   const rootPath = <string>(options.root)
-  const outErrorFilePath = <string>(options.outErrors)
 
   let relationDefinition
 
   try {
     const relationsFileContent = await fs.readFile(settingsFilePath)
-    relationDefinition = relationsFileContent.toJSON()
+    relationDefinition = JSON.parse(relationsFileContent.toString())
   }
   catch (error) {
     process.exitCode = 1
@@ -37,7 +35,7 @@ try {
 
   const diagnostics = await validateMultiFileRels(rootPath, relationDefinition)
 
-  await fs.outputFile(outErrorFilePath, JSON.stringify(diagnostics, null, 2))
+  process.stdout.write(JSON.stringify(diagnostics, null, 2))
 
   if (diagnostics.length > 0) {
     process.exitCode = 4
