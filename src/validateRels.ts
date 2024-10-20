@@ -388,7 +388,7 @@ function queryField(obj: any, fieldSelector: string): JSONPathQueryResult | null
 
   if (results.length > 1) {
     // see https://www.w3.org/TR/xmlschema-1/#cIdentity-constraint_Definitions
-    throw new Error(`A field selector must identify a single node. "${fieldSelector}" identified ${results.map(r => r.pointer).join(", ")}.`)
+    throw new Error(`A field selector must identify a single node. "${fieldSelector}" identified ${results.length} nodes: ${results.map(r => r.pointer).join(", ")}.`)
   }
 
   if (results.length === 1) {
