@@ -1,22 +1,39 @@
 {
-  "name": "validate_rels",
+  "name": "json-keyref",
+  "version": "0.0.1",
   "type": "module",
-  "version": "1.0.0",
-  "description": "Validates relations in JSON documents",
-  "main": "validate_rels.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "description": "Validates relations within one or multiple JSON files, such as key, keyref, uniqueness",
+  "repository": "https://github.com/shuebner/json_keyref",
+  "main": "./built/index.js",
+  "bin": {
+    "json-keyref": "built/index.js"
   },
-  "author": "",
+  "scripts": {
+    "build": "tsc",
+    "start": "node ./built/index.js"
+  },
+  "keywords": [
+    "json",
+    "key",
+    "keyref",
+    "unique",
+    "validation",
+    "relations"
+  ],
+  "author": "Sven Hübner",
   "license": "MIT",
   "dependencies": {
+    "commander": "^12.1.0",
+    "fs-extra": "^11.2.0",
     "glob": "^10.3.14",
-    "jsonpath-plus": "^8.1.0"
+    "jsonpath-plus": "^10.1.0"
   },
   "devDependencies": {
-    "@types/glob": "^8.1.0",
+    "@types/fs-extra": "^11.0.4",
     "@types/jsonpath-plus": "^5.0.5",
     "@types/node": "^20.12.8",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
     "typescript": "^5.4.5"
   }
 }
