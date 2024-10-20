@@ -11,17 +11,23 @@
     "build": "tsc",
     "start": "node ./built/index.js"
   },
-  "keywords": ["json", "key", "keyref", "unique", "validation", "relations"],
+  "keywords": [
+    "json",
+    "key",
+    "keyref",
+    "unique",
+    "validation",
+    "relations"
+  ],
   "author": "Sven Hübner",
   "license": "MIT",
   "dependencies": {
     "commander": "^12.1.0",
     "fs-extra": "^11.2.0",
     "glob": "^10.3.14",
-    "jsonpath-plus": "^8.1.0"
+    "jsonpath-plus": "^10.1.0"
   },
   "devDependencies": {
-    "@types/commander": "^2.12.2",
     "@types/fs-extra": "^11.0.4",
     "@types/jsonpath-plus": "^5.0.5",
     "@types/node": "^20.12.8",
