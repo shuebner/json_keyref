@@ -5,7 +5,7 @@
   "description": "Validates relations within one or multiple JSON files, such as key, keyref, uniqueness",
   "main": "./built/index.js",
   "bin": {
-    "json-keyref": "./built/index.js"
+    "json-keyref": "built/index.js"
   },
   "scripts": {
     "build": "tsc",
