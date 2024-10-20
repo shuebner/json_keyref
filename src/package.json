@@ -11,7 +11,8 @@
     "build": "tsc",
     "start": "node ./built/index.js"
   },
-  "author": "",
+  "keywords": ["json", "key", "keyref", "unique", "validation", "relations"],
+  "author": "Sven Hübner",
   "license": "MIT",
   "dependencies": {
     "commander": "^12.1.0",
