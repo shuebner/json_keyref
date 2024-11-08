@@ -1,13 +1,18 @@
 {
   "compilerOptions": {
     "outDir": "./built",
-    "allowJs": true,
-    "target": "es5",
-    "lib": ["es2015"],
-    "module": "nodenext",
+    "target": "ES2020",
+    "lib": ["es2020"],
+    "esModuleInterop": true,
+    "module": "ESNext",
+    "moduleResolution": "Node",
     "sourceMap": true,
     "strictNullChecks": true,
-    "noImplicitAny": true
+    "noImplicitAny": true,
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
   },
   "include": ["./**/*"]
 }
